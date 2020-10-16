@@ -1,0 +1,156 @@
+# Borrow inspiration from
+# - https://github.com/rust-lang/simpleinfra/tree/master/github-actions
+# - https://github.com/rust-lang/rust/blob/master/.github/workflows/ci.yml
+# - https://github.com/github/semantic/blob/master/.github/workflows/haskell.yml
+
+name: Haskell CI
+on:
+  push:
+    branches: [$default-branch]
+  pull_request:
+    branches: [$default-branch]
+  schedule: # _Only_ runs on the default-branch
+    - cron: "0 0 * * *"
+  release:
+    types: [created]
+  workflow_dispatch: # Use to manually trigger certain conditional workflows
+    inputs:
+      event:
+        description: "docker|docker-push|release|schedule"
+        required: true
+        default: docker
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  ci:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest]
+        ghc: ["8.6.5", "8.8.4", "8.10.2"]
+    name: GHC ${{ matrix.ghc }} - ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      # Shorten binary names with sed
+      # Set windows exe prefix
+      # Set version env
+      - uses: GaloisInc/.github/actions/setup-env@v1
+        with:
+          exe-name: my-exe
+
+      - uses: actions/setup-haskell@v1
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          with-cache: true
+          static-binary: true
+          cache-key-fragment: ${{ format('cabal.GHC-{0}.config', matrix.ghc) }}
+
+      - run: |
+          cp cabal.GHC-${{ matrix.ghc }}.config cabal.project.freeze
+          cabal update
+          cabal configure --disable-optimization --enable-benchmarks --enable-tests --write-ghc-environment-files=always -j2
+
+      - uses: GaloisInc/.github/setup-solvers@v1
+        with:
+          Z3: "4.8.8"
+          CVC4: "4.1.8"
+          YICES: "2.6.2"
+
+      - run: |
+          cabal build
+          cabal test
+
+      # Uses find on dist-newstyle. Strips binary. Zips binary. Use UPX
+      - uses: GaloisInc/.github/actions/prepare-binary@v1
+        with:
+          binary: my_exe
+
+      # Bundle
+      - if: github.event_name == 'release'
+        run: .github/ci.sh bundle_files
+      - if: github.event_name == 'release'
+        run: .github/ci.sh zip_dist
+        env:
+          SIGNING_PASSPHRASE: ${{ secrets.SIGNING_PASSPHRASE }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+      - uses: actions/upload-artifact@v2
+        if: github.event_name == 'release'
+        with:
+          name: ${{ needs.outputs.outputs.name }}-${{ runner.os }}-x86_64
+          path: "${{ needs.outputs.outputs.name }}-${{ runner.os }}-x86_64.tar.gz*"
+
+      # Release
+      # TODO: replace this action with a better one
+      - uses: release-drafter/release-drafter@v5
+        id: release
+        with:
+          version: v${{ needs.outputs.outputs.saw-version }}
+          name: v${{ needs.outputs.outputs.saw-version }}
+          tag: v${{ needs.outputs.outputs.saw-version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/download-artifact@v2
+        with:
+          path: artifacts
+      # TODO: Replace this action with something based on the commented out code below
+      - name: Upload artifacts to release
+        run: |
+          # workaround for draft-releaser being hard to test in CI
+          tag="v${VERSION}"
+          body="${body:-$tag}"
+          if ! hub release show "$tag"; then
+            hub release create -d -m "$body" "$tag"
+          fi
+          assets=()
+          find ./artifacts \( -name 'saw*.tar.gz*' \) -type f -print0 |
+            while IFS= read -r -d '' a; do assets+=("-a" "$a"); done
+          hub release edit -d "${assets[@]}" -m "" "$tag"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.outputs.outputs.saw-version }}
+          body: ${{ steps.release.outputs.body }}
+
+      # - name: Upload Release Binary
+      #   if: "github.event_name == 'release'"
+      #   uses: actions/upload-release-asset@v1.0.2
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ github.event.release.upload_url }}
+      #     asset_path: ${{ steps.compress_binary.outputs.path }}
+      #     asset_name: cabal-cache-${{ runner.OS }}-${{ matrix.ghc }}${{env.EXE_EXT}}.${{ steps.compress_binary.outputs.extension }}
+      #     asset_content_type: ${{ steps.compress_binary.outputs.content_type }}
+      #
+      # - uses: actions/upload-artifact@v2
+      #   with:
+      #     name: cabal-cache-${{ runner.OS }}-${{ matrix.ghc }}${{env.EXE_EXT}}.${{ steps.compress_binary.outputs.extension }}
+      #     path: ${{ steps.compress_binary.outputs.path }}
+
+  docker:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'release' ||
+      contains(github.event.inputs.event, 'docker')
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - run: "grep '^FROM' Dockerfile | cut -d' ' -f2 | xargs -n1 -P4 docker pull"
+      - uses: satackey/action-docker-layer-caching@v0.0.8
+        continue-on-error: true
+      - name: Publish to Registry
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          tags: "latest,${{ env.exe-version }}"
+          repository: my-repository
+          push: ${{ github.event_name == "release" || github.event.inputs.event == "docker-push" }}
