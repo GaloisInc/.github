@@ -2,11 +2,11 @@ name: 'Collect Cabal Binaries'
 description: 'Builds and collects the binaries for all provided cabal targets.'
 inputs:
   targets:
-    description: 'Space-separated list of cabal targets to build.'
+    description: 'Cabal targets to build.'
     required: true
-    default: 'all'
   dest:
     description: "Targets' binaries are copied here after being built."
+    required: true
 outputs:
   targets-json:
     description: "A JSON array of the input targets. Useful as an input to a job matrix."
@@ -19,6 +19,11 @@ runs:
         TARGETS: ${{ inputs.targets }}
         DEST: ${{ inputs.dest }}
       run: |
+        TARGETS=$(echo $TARGETS)  # normalize whitespace to spaces
+        if [ -z $TARGETS ]; then
+            echo "::error::No targets were specified"
+            exit 1
+        fi
         mkdir -p $DEST
         cabal build $TARGETS
         for TARGET in $TARGETS; do
