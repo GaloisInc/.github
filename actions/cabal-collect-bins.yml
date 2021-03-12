@@ -1,0 +1,30 @@
+name: 'Collect Cabal Binaries'
+description: 'Builds and collects the binaries for all provided cabal targets.'
+inputs:
+  targets:
+    description: 'Space-separated list of cabal targets to build.'
+    required: true
+    default: 'all'
+  dest:
+    description: "Targets' binaries are copied here after being built."
+outputs:
+  targets-json:
+    description: "A JSON array of the input targets. Useful as an input to a job matrix."
+    value: ${{ steps.collect.outputs.targets-json }}
+runs:
+  using: "composite"
+  steps:
+    - id: collect
+      env:
+        TARGETS: ${{ inputs.targets }}
+        DEST: ${{ inputs.dest }}
+      run: |
+        mkdir -p $DEST
+        cabal build $TARGETS
+        for TARGET in $TARGETS; do
+            BIN=$(cabal list-bin $TARGET)
+            cp $BIN $DEST
+        done
+        TARGETS_JSON=$(echo -n $TARGETS | jq -Rsc 'split(" ")')
+        echo "::set-output name=targets-json::$TARGETS_JSON"
+      shell: bash
