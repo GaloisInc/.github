@@ -16,7 +16,7 @@ Builds and collects the binaries for all provided cabal targets. Each target
 must resolve to a single binary with `cabal list-bin` (so e.g. `all` is not a
 valid target).
 
-Requires cabal >=3.4 (for `cabal list-bin`).
+**Requires cabal >=3.4** (for `cabal list-bin`).
 
 Inputs:
 - `targets`: Space or newline-delimited string of cabal targets.
