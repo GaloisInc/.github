@@ -20,7 +20,7 @@ runs:
         DEST: ${{ inputs.dest }}
       run: |
         TARGETS=$(echo $TARGETS)  # normalize whitespace to spaces
-        if [ -z $TARGETS ]; then
+        if [ -z "$TARGETS" ]; then
             echo "::error::No targets were specified"
             exit 1
         fi
