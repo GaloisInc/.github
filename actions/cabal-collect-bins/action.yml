@@ -19,6 +19,7 @@ runs:
         TARGETS: ${{ inputs.targets }}
         DEST: ${{ inputs.dest }}
       run: |
+        set -x
         TARGETS=$(echo $TARGETS)  # normalize whitespace to spaces
         if [ -z "$TARGETS" ]; then
             echo "::error::No targets were specified"
