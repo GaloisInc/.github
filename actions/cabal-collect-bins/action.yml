@@ -16,20 +16,18 @@ runs:
   steps:
     - id: collect
       env:
-        TARGETS: ${{ inputs.targets }}
+        TARGETS: ${{ join(inputs.targets, ' ') }}
         DEST: ${{ inputs.dest }}
       run: |
-        TARGETS=$(echo $TARGETS)  # normalize whitespace to spaces
+        set -x
+        echo "[$TARGETS]"
         if [ -z "$TARGETS" ]; then
             echo "::error::No targets were specified"
             exit 1
         fi
         mkdir -p $DEST
         cabal build $TARGETS
-        for TARGET in $TARGETS; do
-            BIN=$(cabal list-bin $TARGET)
-            cp $BIN $DEST
-        done
+        cabal install $TARGETS --installdir=$DEST
         TARGETS_JSON=$(echo -n $TARGETS | jq -Rsc 'split(" ")')
         echo "::set-output name=targets-json::$TARGETS_JSON"
       shell: bash
