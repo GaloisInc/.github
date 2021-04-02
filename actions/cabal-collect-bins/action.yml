@@ -18,6 +18,7 @@ runs:
       env:
         TARGETS: ${{ join(inputs.targets, ' ') }}
         DEST: ${{ inputs.dest }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
         set -x
         echo "[$TARGETS]"
@@ -26,8 +27,14 @@ runs:
             exit 1
         fi
         mkdir -p $DEST
+        cabal install --installdir=$ACTION_PATH/bin cabal-plan
         cabal build $TARGETS
-        cabal install $TARGETS --installdir=$DEST
+        for TARGET in $TARGETS; do
+            BIN=$($ACTION_PATH/bin/cabal-plan list-bin $TARGET)
+            if [ -x $BIN ]; then
+                cp -v $BIN $DEST
+            fi
+        done
         TARGETS_JSON=$(echo -n $TARGETS | jq -Rsc 'split(" ")')
         echo "::set-output name=targets-json::$TARGETS_JSON"
       shell: bash
