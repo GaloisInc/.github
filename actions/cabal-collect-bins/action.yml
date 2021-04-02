@@ -1,0 +1,39 @@
+name: 'Collect Cabal Binaries'
+description: 'Builds and collects the binaries for all provided cabal targets.'
+inputs:
+  targets:
+    description: 'Cabal targets to build.'
+    required: true
+  dest:
+    description: "Targets' binaries are copied here after being built."
+    required: true
+outputs:
+  targets-json:
+    description: "A JSON array of the input targets. Useful as an input to a job matrix."
+    value: ${{ steps.collect.outputs.targets-json }}
+runs:
+  using: "composite"
+  steps:
+    - id: collect
+      env:
+        TARGETS: ${{ join(inputs.targets, ' ') }}
+        DEST: ${{ inputs.dest }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        if [ -z "$TARGETS" ]; then
+            echo "::error::No targets were specified"
+            exit 1
+        fi
+        echo "Targets: $TARGETS"
+        mkdir -p $DEST
+        cabal install --installdir=$ACTION_PATH/bin cabal-plan
+        cabal build $TARGETS
+        for TARGET in $TARGETS; do
+            BIN=$($ACTION_PATH/bin/cabal-plan list-bin $TARGET)
+            if [ -x $BIN ]; then
+                cp -v $BIN $DEST
+            fi
+        done
+        TARGETS_JSON=$(echo -n $TARGETS | jq -Rsc 'split(" ")')
+        echo "::set-output name=targets-json::$TARGETS_JSON"
+      shell: bash
