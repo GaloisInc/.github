@@ -20,12 +20,11 @@ runs:
         DEST: ${{ inputs.dest }}
         ACTION_PATH: ${{ github.action_path }}
       run: |
-        set -x
-        echo "[$TARGETS]"
         if [ -z "$TARGETS" ]; then
             echo "::error::No targets were specified"
             exit 1
         fi
+        echo "Targets: $TARGETS"
         mkdir -p $DEST
         cabal install --installdir=$ACTION_PATH/bin cabal-plan
         cabal build $TARGETS

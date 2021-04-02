@@ -16,8 +16,6 @@ Builds and collects the binaries for all provided cabal targets. Each target
 must resolve to a single binary with `cabal list-bin` (so e.g. `all` is not a
 valid target).
 
-**Requires cabal >=3.4** (for `cabal list-bin`).
-
 Inputs:
 - `targets`: Space or newline-delimited string of cabal targets.
 - `dest`: Location to which the built binaries are copied. It is created if it
@@ -39,6 +37,8 @@ jobs:
       bins-json: ${{ steps.bins.outputs.targets-json }}
     steps:
       - uses: actions/checkout@v2
+
+      - uses: haskell/actions/setup@v1
 
       - uses: GaloisInc/.github/actions/cabal-collect-bins@v1
         id: bins
