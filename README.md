@@ -15,7 +15,10 @@ customized and involved setup)
 Builds and collects the binaries for all provided cabal targets. Each target
 must resolve to a single binary with `cabal list-bin` (so e.g. `all` is not
 a valid target). Because we use `cabal list-bin`, this requires the use of
-`cabal` 3.4.0.0 or later.
+`cabal` 3.4.0.0 or later, although it is recommended to use `cabal-3.8.1.0`
+or later to make sure that a fix for
+[this `list-bin` issue](https://github.com/haskell/cabal/issues/7679)
+is included.
 
 Inputs:
 - `targets`: Space or newline-delimited string of cabal targets.
