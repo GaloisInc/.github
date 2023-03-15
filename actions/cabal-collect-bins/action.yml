@@ -26,10 +26,9 @@ runs:
         fi
         echo "Targets: $TARGETS"
         mkdir -p $DEST
-        cabal install --installdir=$ACTION_PATH/bin cabal-plan
         cabal build $TARGETS
         for TARGET in $TARGETS; do
-            BIN=$($ACTION_PATH/bin/cabal-plan list-bin $TARGET)
+            BIN=$($ACTION_PATH/bin/cabal list-bin $TARGET)
             if [ -x $BIN ]; then
                 cp -v $BIN $DEST
             fi

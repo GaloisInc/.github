@@ -13,8 +13,9 @@ customized and involved setup)
 ### [`cabal-collect-bins`](./actions/cabal-collect-bins/action.yml)
 
 Builds and collects the binaries for all provided cabal targets. Each target
-must resolve to a single binary with `cabal-plan list-bin` (so e.g. `all` is not
-a valid target).
+must resolve to a single binary with `cabal list-bin` (so e.g. `all` is not
+a valid target). Because we use `cabal list-bin`, this requires the use of
+`cabal` 3.4.0.0 or later.
 
 Inputs:
 - `targets`: Space or newline-delimited string of cabal targets.
