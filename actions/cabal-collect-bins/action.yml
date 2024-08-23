@@ -28,7 +28,7 @@ runs:
         mkdir -p $DEST
         cabal build $TARGETS
         for TARGET in $TARGETS; do
-            BIN=$(cabal list-bin $TARGET)
+            BIN=$(cabal list-bin -v0 $TARGET)
             if [ -x $BIN ]; then
                 cp -v $BIN $DEST
             fi
