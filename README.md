@@ -44,7 +44,7 @@ jobs:
 
       - uses: haskell/actions/setup@v1
 
-      - uses: GaloisInc/.github/actions/cabal-collect-bins@v1.1.1
+      - uses: GaloisInc/.github/actions/cabal-collect-bins@v1.1.2
         id: bins
         with:
           targets: |
