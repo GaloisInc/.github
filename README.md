@@ -52,7 +52,7 @@ jobs:
             cryptol
           dest: dist/bin
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
           name: dist-bins
           path: dist
@@ -64,7 +64,7 @@ jobs:
       matrix:
         bin: ${{ fromJson(needs.build.outputs.bins-json) }}
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4
         with:
           name: dist-bins
           path: dist
