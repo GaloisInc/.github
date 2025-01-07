@@ -80,7 +80,7 @@ jobs:
         env:
           SIGNING_PASSPHRASE: ${{ secrets.SIGNING_PASSPHRASE }}
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         if: github.event_name == 'release'
         with:
           name: ${{ needs.outputs.outputs.name }}-${{ runner.os }}-x86_64
@@ -97,7 +97,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4
         with:
           path: artifacts
       # TODO: Replace this action with something based on the commented out code below
@@ -129,7 +129,7 @@ jobs:
       #     asset_name: cabal-cache-${{ runner.OS }}-${{ matrix.ghc }}${{env.EXE_EXT}}.${{ steps.compress_binary.outputs.extension }}
       #     asset_content_type: ${{ steps.compress_binary.outputs.content_type }}
       #
-      # - uses: actions/upload-artifact@v2
+      # - uses: actions/upload-artifact@v4
       #   with:
       #     name: cabal-cache-${{ runner.OS }}-${{ matrix.ghc }}${{env.EXE_EXT}}.${{ steps.compress_binary.outputs.extension }}
       #     path: ${{ steps.compress_binary.outputs.path }}
