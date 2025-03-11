@@ -74,6 +74,81 @@ jobs:
           dist/bin/${{ matrix.bin }} --version
 ```
 
+### [`cache-cabal-store`](./actions/cache-cabal-store/action.yml)
+
+Cache Haskell dependencies in the Cabal store.
+
+`cabal configure` should be run before this action.
+
+This action rebuilds dependencies on cache misses using `cabal build all --only-dependencies`.
+
+The cache key is calculated using:
+
+- The runner OS and arch
+- The GHC and Cabal versions
+- The hash of the Cabal build plan
+
+Inputs:
+
+- `cabal-store`: Cabal store path
+- `cabal-version`: Cabal version
+- `ghc-version`: GHC version
+
+Outputs: None.
+
+Example:
+
+```yml
+name: CI
+jobs:
+  ci:
+    name: ${{ matrix.os }} GHC-${{ matrix.ghc }} Cabal-${{ matrix.cabal }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        ghc: [9.10.1, 9.12.1]
+        cabal: [3.12.1.0]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: haskell-actions/setup@v2
+        id: setup
+        with:
+          cabal-version: ${{ matrix.cabal }}
+          ghc-version: ${{ matrix.ghc }}
+      # `cabal configure` should come before restoring the Cabal store cache so
+      # that the build plan can form a part of the cache key.
+      - name: Cabal update
+        shell: bash
+        run: cabal update
+      - name: Configure
+        shell: bash
+        run: cabal configure --enable-tests
+      - name: Build and cache dependencies
+        uses: GaloisInc/.github/actions/cache-cabal-store@PUT-SHA-HERE
+        with:
+          cabal-store: ${{ steps.setup.outputs.cabal-store }}
+          cabal-version: ${{ steps.setup.outputs.cabal-version }}
+          ghc-version: ${{ steps.setup.outputs.ghc-version }}
+      # Optional: Also cache dist-newstyle
+      - name: Restore build cache
+        id: build-cache
+        uses: actions/cache/restore@v3
+        with:
+          path: dist-newstyle
+          key: cabal-${{ runner.os }}-${{ runner.arch }}-ghc${{ matrix.ghc }}-${{ github.ref }}
+          restore-keys: cabal-${{ runner.os }}-${{ runner.arch }}-ghc${{ matrix.ghc }}-
+      - run: cabal build
+        shell: bash
+      # Optional: Also cache dist-newstyle
+      - name: Save build cache
+        uses: actions/cache/save@v3
+        if: always()
+        with:
+          path: dist-newstyle
+          key: ${{ steps.build-cache.outputs.cache-primary-key }}
+```
+
 ## Layout
 
 - `actions/`: contains actions intended to be usable by workflows

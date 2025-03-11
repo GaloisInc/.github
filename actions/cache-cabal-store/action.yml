@@ -1,0 +1,56 @@
+# Based on:
+# https://github.com/haskell-actions/setup/blob/e09ab5080aed999b46591720b1be129e00e0eef5/docs/examples.md#model-cabal-workflow-with-caching
+name: "Cache Cabal store"
+description: |
+  Cache Haskell dependencies in the Cabal store.
+inputs:
+  cabal-store:
+    description: |
+      Cabal store path.
+
+      If using `haskell-actions/setup` with a step `id` of `setup`, set this to
+      `steps.setup.outputs.cabal-store`.
+    required: true
+  cabal-version:
+    description: |
+      Cabal version.
+
+      If using `haskell-actions/setup` with a step `id` of `setup`, set this to
+      `steps.setup.outputs.cabal-version`.
+    required: true
+  ghc-version:
+    description: |
+      GHC version.
+
+      If using `haskell-actions/setup` with a step `id` of `setup`, set this to
+      `steps.setup.outputs.ghc-version`.
+    required: true
+outputs: {}
+runs:
+  using: "composite"
+  steps:
+    - name: Restore cached dependencies
+      uses: actions/cache/restore@v4
+      id: cache
+      env:
+        key: ${{ runner.os }}-${{ runner.arch }}-ghc-${{ inputs.ghc-version }}-cabal-${{ inputs.cabal-version }}
+      with:
+        path: ${{ inputs.cabal-store }}
+        key: ${{ env.key }}-plan-${{ hashFiles('dist-newstyle/cache/plan.json') }}
+        restore-keys: ${{ env.key }}-
+
+    - name: Install dependencies
+      # If we had an exact cache hit, the dependencies will be up to date.
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: cabal build all --only-dependencies
+
+    # Cache dependencies right away, so that we do not have to rebuild them
+    # should subsequent steps fail.
+    - name: Save cached dependencies
+      uses: actions/cache/save@v4
+      # If we had an exact cache hit, we haven't done anything.
+      if: steps.cache.outputs.cache-hit != 'true'
+      with:
+        path: ${{ inputs.cabal-store }}
+        key: ${{ steps.cache.outputs.cache-primary-key }}
