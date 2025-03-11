@@ -93,6 +93,11 @@ Inputs:
 - `cabal-store`: Cabal store path
 - `cabal-version`: Cabal version
 - `ghc-version`: GHC version
+- `prepend-key`: Extra information to prepend to the cache key. Can be
+  updated to force the use of a new cache if the current cache contents become
+  corrupted/invalid. This can sometimes happen when (for example) the OS version
+  is changed but older .so files are cached, which can have various effects
+  (e.g. Cabal complains it can't find a valid version of the `happy` tool).
 
 Outputs: None.
 
@@ -130,6 +135,7 @@ jobs:
           cabal-store: ${{ steps.setup.outputs.cabal-store }}
           cabal-version: ${{ steps.setup.outputs.cabal-version }}
           ghc-version: ${{ steps.setup.outputs.ghc-version }}
+          prepend-key: cache-v0-
       # Optional: Also cache dist-newstyle
       - name: Restore build cache
         id: build-cache

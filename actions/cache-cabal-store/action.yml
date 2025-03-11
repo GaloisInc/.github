@@ -25,6 +25,15 @@ inputs:
       If using `haskell-actions/setup` with a step `id` of `setup`, set this to
       `steps.setup.outputs.ghc-version`.
     required: true
+  prepend-key:
+    description: |
+      Extra information to prepend to the cache key.
+
+      Can be updated to force the use of a new cache if the current cache
+      contents become corrupted/invalid. This can sometimes happen when (for
+      example) the OS version is changed but older .so files are cached, which
+      can have various effects (e.g. Cabal complains it can't find a valid
+      version of the `happy` tool).
 outputs: {}
 runs:
   using: "composite"
@@ -33,7 +42,7 @@ runs:
       uses: actions/cache/restore@v4
       id: cache
       env:
-        key: ${{ runner.os }}-${{ runner.arch }}-ghc-${{ inputs.ghc-version }}-cabal-${{ inputs.cabal-version }}
+        key: ${{ inputs.prepend-key }}-${{ runner.os }}-${{ runner.arch }}-ghc${{ inputs.ghc-version }}-cabal${{ inputs.cabal-version }}
       with:
         path: ${{ inputs.cabal-store }}
         key: ${{ env.key }}-plan-${{ hashFiles('dist-newstyle/cache/plan.json') }}
