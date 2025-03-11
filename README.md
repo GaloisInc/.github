@@ -139,7 +139,7 @@ jobs:
       # Optional: Also cache dist-newstyle
       - name: Restore build cache
         id: build-cache
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: dist-newstyle
           key: cabal-${{ runner.os }}-${{ runner.arch }}-ghc${{ matrix.ghc }}-${{ github.ref }}
@@ -148,7 +148,7 @@ jobs:
         shell: bash
       # Optional: Also cache dist-newstyle
       - name: Save build cache
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@v4
         if: always()
         with:
           path: dist-newstyle
