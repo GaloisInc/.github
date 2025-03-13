@@ -1,0 +1,80 @@
+name: Check Cabal/GHC compatibility
+description: >
+  Check that the Cabal configuration file is compatible with the version of the
+  Cabal library bundled with GHC.
+inputs:
+  dirs:
+    description: Directories in which to run
+    required: false
+    default: "."
+  ghc:
+    description: GHC version, e.g., "9.10.1"
+    required: true
+  pkgs:
+    description: Extra packages to make available in the Nix shell
+    required: false
+    default: ""
+  token:
+    description: Set to `secrets.GITHUB_TOKEN`
+    required: true
+outputs: {}
+runs:
+  using: "composite"
+  steps:
+  - name: Install Nix
+    uses: cachix/install-nix-action@v31
+    with:
+      nix_path: nixpkgs=channel:nixos-24.05
+      install_url: https://releases.nixos.org/nix/nix-2.26.3/install
+      extra_nix_config: |
+        access-tokens = github.com=${{ inputs.token }}
+  - name: Setup nix-shell environment variable
+    shell: bash
+    # Setup a nix shell environment command that will supply the
+    # appropriate GHC version
+    run: |
+      GHC=haskell.compiler.ghc$(echo ${{ inputs.ghc }} | sed -e s,\\.,,g)
+      echo GHC=$GHC >> $GITHUB_ENV
+      case ${{ inputs.ghc }} in
+        8.6.5) GHC_NIXPKGS=github:nixos/nixpkgs/20.09 ;;
+        8.8.4) GHC_NIXPKGS=github:nixos/nixpkgs/21.11 ;;
+        8.10.7) GHC_NIXPKGS=github:nixos/nixpkgs/nixos-22.05 ;;
+        9.0.2) GHC_NIXPKGS=github:nixos/nixpkgs/nixos-22.05 ;;
+        9.2.0) GHC_NIXPKGS=github:nixos/nixpkgs/nixos-22.05 ;;
+        9.2.1) GHC_NIXPKGS=github:nixos/nixpkgs/nixos-22.05 ;;
+        9.2.2) GHC_NIXPKGS=github:nixos/nixpkgs/nixos-22.05 ;;
+        9.4.0) GHC_NIXPKGS=github:nixos/nixpkgs/nixos-23.05 ;;
+        9.4.1) GHC_NIXPKGS=github:nixos/nixpkgs/nixos-23.05 ;;
+        9.4.2) GHC_NIXPKGS=github:nixos/nixpkgs/nixos-23.05 ;;
+        9.4.3) GHC_NIXPKGS=github:nixos/nixpkgs/nixos-23.05 ;;
+        9.4.4) GHC_NIXPKGS=github:nixos/nixpkgs/nixos-23.05 ;;
+        9.4.5) GHC_NIXPKGS=github:nixos/nixpkgs/nixos-23.05 ;;
+        9.6.1) GHC_NIXPKGS=github:nixos/nixpkgs/nixos-23.05 ;;
+        9.6.2) GHC_NIXPKGS=github:nixos/nixpkgs/nixos-23.05 ;;
+        9.8.1) GHC_NIXPKGS=github:nixos/nixpkgs/nixos-23.11 ;;
+        9.10.1) GHC_NIXPKGS=github:nixos/nixpkgs/nixos-24.05 ;;
+        *) GHC_NIXPKGS=github:nixos/nixpkgs/24.05 ;;
+      esac
+      pkgs=""
+      for pkg in ${{ inputs.pkgs }}; do
+        pkgs+=" ${GHC_NIXPKGS}#${pkg}"
+      done
+      echo DO_IN_NIX_SHELL="nix shell ${GHC_NIXPKGS}#cabal-install ${GHC_NIXPKGS}#${GHC} ${pkgs}" >> $GITHUB_ENV
+      # In a normal nix derivation, there is a pkgconfig hook that automatically
+      # handles this, but since we are just using a nix shell this must be setup
+      # manually so that if the haskell zlib package is built, it finds the right
+      # zlib packge config.
+      echo PKG_CONFIG_PATH=$(nix eval --raw ${GHC_NIXPKGS}#zlib.dev)/lib/pkgconfig >> $GITHUB_ENV
+  - name: Check package's Cabal/GHC compatibility
+    shell: bash
+    run: |
+      defsetup()  { echo import Distribution.Simple; echo main = defaultMain; }
+      setup_src() { if [ ! -f Setup.hs ] ; then defsetup > DefSetup.hs; fi; ls *Setup.hs; }
+      setup_bin() { echo setup.${{ inputs.ghc }}; }
+      with_ghc()  { $DO_IN_NIX_SHELL -c ${@}; }
+      echo "github.com=${{ inputs.token }}" >> nix.conf
+      for dir in ${{ inputs.dirs }}; do
+        pushd "$dir"
+        with_ghc ghc -o $(setup_bin) $(setup_src) && ./$(setup_bin) clean
+        popd
+      done

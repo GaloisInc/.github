@@ -67,3 +67,65 @@ jobs:
           chmod +x dist/bin/*
           dist/bin/${{ matrix.bin }} --version
 ```
+
+### [`cabal-ghc-compat`](./actions/cabal-ghc-compat/action.yml)
+
+Check that the Cabal configuration file is compatible with the version of the
+Cabal library bundled with GHC.
+
+By default, commands like `cabal build` will process the Cabal configuration
+files (`.cabal`, `cabal.project{,.freeze}`) using the version of the Cabal
+library that is bundled with the `cabal-install` tool. However, if a project
+supports older versions of GHC, it can be helpful to check that the Cabal
+configuration files can be parsed using the version of the Cabal library that is
+[bundled with GHC][bundled].
+
+[bundled]: https://gitlab.haskell.org/ghc/ghc/-/wikis/commentary/libraries/version-history
+
+This action performs this check by using Nix to install the specified version
+of GHC, creating a minimal `Setup.hs` file (which forces the project to be built
+using GHC's version of Cabal), and running `cabal clean` (which is sufficient
+to cause validation of the Cabal configuration files). Thus, it should be run
+either entirely before any `cabal {build,install,test}` steps or entirely after
+them.
+
+Inputs:
+
+- `dirs`: Directories in which to run
+- `ghc`: GHC version, e.g., "9.10.1"
+- `pkgs`: Extra packages to make available in the Nix shell
+- `token`: Set to `secrets.GITHUB_TOKEN`
+
+This action has no explicit outputs, but sets the `DO_IN_NIX_SHELL` environment
+variable to `nix shell ${GHC_NIXPKGS}#cabal-install ${GHC_NIXPKGS}#${GHC}
+${pkgs}` where `${GHC_NIXPKGS}` is a version of nixpkgs that contains the
+specified version of GHC from the `ghc` input, and ${pkgs}` is the list of
+packages from the `pkgs` input.
+
+Example:
+
+```yaml
+name: CI
+on: [push]
+jobs:
+  ci:
+    name: ${{ matrix.os }} GHC-${{ matrix.ghc }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-24.04]
+        ghc: [9.12.1, 9.10.1]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: haskell-actions/setup@v2
+        id: setup-haskell
+        with:
+          ghc-version: ${{ matrix.ghc }}
+      # (Any cache/build/test/install steps go here)
+      - name: Check Cabal/GHC compatibility
+        uses: GaloisInc/.github/actions/cabal-ghc-compat@SHA
+        with:
+          ghc: ${{ matrix.ghc }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+```
+
