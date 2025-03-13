@@ -1,12 +1,6 @@
 # GitHub Workflows and Actions
 
-A collection of github actions and other tooling designed to reduce repetition
-and make adding pipelines easier.
-
-Not every bit of logic should be contained in its own action, and when possible,
-individual projects should ideally do a bit of legwork to make their workflows
-more standardized. (e.g., being able to run tests without requiring a highly
-customized and involved setup)
+A collection of Github Actions designed to reduce repetition across projects.
 
 ## Actions
 
