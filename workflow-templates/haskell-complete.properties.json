@@ -1,6 +1,0 @@
-{
-  "name": "Haskell CI (docker + release)",
-  "description": "Codifies common patterns when building cabal based haskell CI pipelines",
-  "iconName": "haskell",
-  "categories": ["Haskell"]
-}
