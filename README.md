@@ -34,9 +34,9 @@ jobs:
     outputs:
       bins-json: ${{ steps.bins.outputs.targets-json }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-      - uses: haskell/actions/setup@v1
+      - uses: haskell-actions/setup@v2
 
       - uses: GaloisInc/.github/actions/cabal-collect-bins@v1.1.2
         id: bins
