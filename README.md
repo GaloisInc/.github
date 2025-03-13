@@ -1,6 +1,6 @@
 # GitHub Workflows and Actions
 
-A collection of Github Actions designed to reduce repetition across projects.
+A collection of GitHub Actions designed to reduce repetition across projects.
 
 ## Actions
 
