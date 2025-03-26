@@ -73,12 +73,22 @@ jobs:
 Check that the Cabal configuration file is compatible with the version of the
 Cabal library bundled with GHC.
 
-By default, commands like `cabal build` will process the Cabal configuration
-files (`.cabal`, `cabal.project{,.freeze}`) using the version of the Cabal
-library that is bundled with the `cabal-install` tool. However, if a project
-supports older versions of GHC, it can be helpful to check that the Cabal
-configuration files can be parsed using the version of the Cabal library that is
-[bundled with GHC][bundled].
+Many Haskell projects support compilation with older GHC versions to help
+users build the project even if they lack access to the latest GHC and Cabal
+packages, such as when using versions provided by their OS package manager
+on older systems. However, compatibility with older Cabal versions is often
+overlooked. By default, commands like cabal build use the Cabal library version
+bundled with the cabal-install tool to process configuration files (.cabal,
+cabal.project{,.freeze}). If a project's CI configuration only tests recent
+cabal-install versions, it may build with older GHC versions but only with
+newer Cabal versions. This undermines compatibility, as users with older Cabal
+versions will still be unable to build the project.
+
+This action verifies that the project is buildable with the Cabal library
+version [bundled with GHC][bundled]. These GHC/Cabal versions are typically
+available in the same OS package sets. Using this action to check GHC/Cabal
+compatibility helps prevent accidental failures to support older combinations
+that users may rely on.
 
 [bundled]: https://gitlab.haskell.org/ghc/ghc/-/wikis/commentary/libraries/version-history
 
@@ -87,7 +97,9 @@ of GHC, creating a minimal `Setup.hs` file (which forces the project to be built
 using GHC's version of Cabal), and running `cabal clean` (which is sufficient
 to cause validation of the Cabal configuration files). Thus, it should be run
 either entirely before any `cabal {build,install,test}` steps or entirely after
-them.
+them. This strategy is more foolproof than explicitly including older Cabal
+versions in, e.g., a `matrix`, as it specifically checks the version of Cabal
+bundled with the specified version GHC.
 
 Inputs:
 
