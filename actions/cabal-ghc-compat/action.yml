@@ -11,7 +11,11 @@ inputs:
     description: GHC version, e.g., "9.10.1"
     required: true
   pkgs:
-    description: Extra packages to make available in the Nix shell (separated by spaces)
+    description: |
+      Extra packages to make available in the Nix shell.
+
+      These should be Nix attribute names, separated by spaces (e.g., `gmp
+      pkg-config zlib zlib.dev`).
     required: false
     default: ""
   token:

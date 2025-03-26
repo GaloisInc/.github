@@ -105,7 +105,8 @@ Inputs:
 
 - `dirs`: Directories in which to run
 - `ghc`: GHC version, e.g., "9.10.1"
-- `pkgs`: Extra packages to make available in the Nix shell
+- `pkgs`: Extra packages to make available in the Nix shell (see action for
+  details and an example)
 - `token`: Set to `secrets.GITHUB_TOKEN`
 
 This action has no explicit outputs, but sets the `DO_IN_NIX_SHELL` environment
