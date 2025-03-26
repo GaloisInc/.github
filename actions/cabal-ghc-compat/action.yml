@@ -4,14 +4,14 @@ description: >
   Cabal library bundled with GHC.
 inputs:
   dirs:
-    description: Directories in which to run
+    description: Directories in which to run (relative to the repo root)
     required: false
     default: "."
   ghc:
     description: GHC version, e.g., "9.10.1"
     required: true
   pkgs:
-    description: Extra packages to make available in the Nix shell
+    description: Extra packages to make available in the Nix shell (separated by spaces)
     required: false
     default: ""
   token:
@@ -74,7 +74,5 @@ runs:
       with_ghc()  { $DO_IN_NIX_SHELL -c ${@}; }
       echo "github.com=${{ inputs.token }}" >> nix.conf
       for dir in ${{ inputs.dirs }}; do
-        pushd "$dir"
-        with_ghc ghc -o $(setup_bin) $(setup_src) && ./$(setup_bin) clean
-        popd
+        (cd "$dir"; with_ghc ghc -o $(setup_bin) $(setup_src) && ./$(setup_bin) clean)
       done
