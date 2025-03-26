@@ -112,8 +112,11 @@ Inputs:
 This action has no explicit outputs, but sets the `DO_IN_NIX_SHELL` environment
 variable to `nix shell ${GHC_NIXPKGS}#cabal-install ${GHC_NIXPKGS}#${GHC}
 ${pkgs}` where `${GHC_NIXPKGS}` is a version of nixpkgs that contains the
-specified version of GHC from the `ghc` input, and ${pkgs}` is the list of
-packages from the `pkgs` input.
+specified version of GHC from the `ghc` input, and `${pkgs}` is the list of
+packages from the `pkgs` input. This exported variable allows for CI jobs
+that use this action to subsequently run the same cabal and GHC prepared
+by this action. For example, a job could then perform a build step via
+`${DO_IN_NIX_SHELL} -c cabal build`.
 
 Example:
 
