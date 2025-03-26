@@ -78,8 +78,8 @@ users build the project even if they lack access to the latest GHC and Cabal
 packages, such as when using versions provided by their OS package manager
 on older systems. However, compatibility with older Cabal versions is often
 overlooked. By default, commands like cabal build use the Cabal library version
-bundled with the cabal-install tool to process configuration files (.cabal,
-cabal.project{,.freeze}). If a project's CI configuration only tests recent
+bundled with the `cabal-install` tool to process configuration files (`.cabal`,
+`cabal.project{,.freeze}`). If a project's CI configuration only tests recent
 cabal-install versions, it may build with older GHC versions but only with
 newer Cabal versions. This undermines compatibility, as users with older Cabal
 versions will still be unable to build the project.
