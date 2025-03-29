@@ -68,13 +68,16 @@ runs:
     with:
       cabal-version: ${{ inputs.cabal }}
       ghc-version: ${{ inputs.ghc }}
-  - shell: bash
+  - name: cabal sdist
+    shell: bash
+    if: inputs.sdist
     run: |
+      echo "::group::sdist"
       cabal sdist -o sdist
       mkdir unpacked
       tar -C unpacked -xzf sdist/*.tar.gz
       cd unpacked
-    if: inputs.sdist
+      echo "::endgroup::"
   - uses: actions/cache/restore@v4
     name: Restore Cabal cache
     id: cache
@@ -102,8 +105,12 @@ runs:
         ${{ env.key }}-${{ github.ref }}
       restore-keys: |
         ${{ env.key }}-
-  - shell: bash
-    run: cabal configure ${{ inputs.configure-flags }} ${{ inputs.targets }}
+  - name: cabal configure
+    shell: bash
+    run: |
+      echo "::group::configure"
+      cabal configure ${{ inputs.configure-flags }} ${{ inputs.targets }}
+      echo "::endgroup"
   # Note [Parallelism]
   # ------------------
   #
@@ -119,16 +126,31 @@ runs:
   # be nice to replace this with `cabal configure --semaphore`, but this only
   # became available with GHC 9.8. To support older versions, we don't use it
   # just yet.
-  - shell: bash
-    run: cabal build --only-dependencies ${{ inputs.targets }}
-  - shell: bash
-    run: cabal build ${{ inputs.targets }}
-  - shell: bash
-    run: cabal test ${{ inputs.targets }}
-    if: inputs.test
-  - shell: bash
-    run: cabal check
+  - name: cabal build --only-dependencies
+    shell: bash
+    run: |
+      echo "::group::dependencies"
+      cabal build --only-dependencies ${{ inputs.targets }}
+      echo "::endgroup"
+  - name: cabal build
+    shell: bash
+    run: |
+      echo "::group::build"
+      cabal build ${{ inputs.targets }}
+      echo "::endgroup"
+  - name: cabal test
+    shell: bash
+    run: |
+      echo "::group::test"
+      cabal test ${{ inputs.targets }}
+      echo "::endgroup"
+  - name: cabal check
+    shell: bash
     if: inputs.check
+    run: |
+      echo "::group::check"
+      cabal check
+      echo "::endgroup"
   # Build the Haddocks to ensure that they are well formed. Somewhat
   # counterintuitively, we run this with the --disable-documentation flag. This
   # does not mean "do not build the Haddocks", but rather, "build the Haddocks
@@ -138,9 +160,13 @@ runs:
   # is that the rendered Haddocks won't contain any links to identifiers from
   # library dependencies. Since we are only building Haddocks to ensure well-
   # formedness, we consider this an acceptable tradeoff.
-  - shell: bash
-    run: cabal haddock --disable-documentation ${{ inputs.targets }}
+  - name: cabal haddock
+    shell: bash
     if: inputs.haddock
+    run: |
+      echo "::group::haddock"
+      cabal haddock --disable-documentation ${{ inputs.targets }}
+      echo "::endgroup"
   - uses: actions/cache/save@v4
     name: Save Cabal cache
     # Always save the cache, even if a previous step fails. (By default, the
@@ -170,8 +196,10 @@ runs:
   - name: Check Cabal/GHC compatibility
     shell: bash
     run: |
+      echo "::group::compat"
       for dir in ${{ inputs.compat-dirs }}; do
         cd "${{ github.workspace }}/${dir}"
         echo 'import Distribution.Simple; main = defaultMain' > Setup.hs
         runhaskell Setup.hs clean
       done
+      echo "::endgroup"
