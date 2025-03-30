@@ -68,7 +68,9 @@ jobs:
           dist/bin/${{ matrix.bin }} --version
 ```
 
-### [`haskell-ci`](./actions/haskell-ci/action.yml)
+## Workflows
+
+### [`haskell-ci`](./workflows/haskell-ci.yml)
 
 Build and test single-package Haskell projects using Cabal. Performs a sequence
 of steps that are appropriate for many projects, namely:
@@ -80,10 +82,10 @@ of steps that are appropriate for many projects, namely:
 - Unconditionally saves the cache
 - Checks that the package is compatible with GHC's bundled version of Cabal
 
-This action will not be applicable to all projects, but it is applicable to
+This workflow will not be applicable to all projects, but it is applicable to
 enough to be useful.
 
-For a description of the inputs, see the action itself.
+For a description of the inputs, see the workflow itself.
 
 Example:
 
@@ -95,7 +97,7 @@ on:
   pull_request:
   workflow_dispatch:
 jobs:
-  test:
+  ci:
     name: ${{ matrix.os }} GHC-${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -103,9 +105,9 @@ jobs:
         os: [ubuntu-24.04]
         ghc: [9.8.4, 9.10.1, 9.12.1]
       fail-fast: false
-    steps:
-      - uses: actions/checkout@v4
-      - uses: GaloisInc/.github/actions/haskell-ci@<SHA>
+    uses:
+      haskell-ci:
+        uses: GaloisInc/.github/workflows/haskell-ci@<SHA>
         inputs:
           ghc: ${{ matrix.ghc }}
           os: ${{ matrix.os }}

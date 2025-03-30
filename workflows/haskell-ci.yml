@@ -1,0 +1,212 @@
+name: Haskell CI
+
+on:
+  workflow_call:
+    inputs:
+      cabal:
+        description: Cabal version, e.g., "3.12.0.0"
+        type: string
+        required: false
+        default: latest
+      check:
+        description: Whether to run `cabal check`.
+        type: boolean
+        required: false
+        default: true
+      compat:
+        description: Whether to run the Cabal/GHC compatibility check.
+        type: boolean
+        required: false
+        default: true
+      compat-dirs:
+        description: Directories in which to run the Cabal/GHC compatibility check, relative to the repo root.
+        type: string
+        required: false
+        default: "."
+      configure-flags:
+        description: Flags to pass to `cabal configure`, e.g., `--ghc-options='-Werror=default -j'`
+        type: string
+        required: false
+        # For an explanation of `--ghc-options='-j'`, see Note [Parallelism].
+        default: --ghc-options='-j' --enable-tests
+      ghc:
+        description: GHC version, e.g., "9.10.1"
+        type: string
+        required: false
+        default: latest
+      haddock:
+        description: Whether to run `cabal haddock`.
+        type: boolean
+        required: false
+        default: true
+      os:
+        description: |
+          Runner OS, e.g., "ubuntu-latest".
+
+          Set this to the value of `runs-on`, *not* `runner.os`.
+        type: string
+        required: true
+      sdist:
+        description: Whether to run `cabal sdist`.
+        type: boolean
+        required: false
+        default: true
+      targets:
+        description: Cabal targets to build, e.g. `lib:my-lib`.
+        type: string
+        required: false
+        default: all
+      test:
+        description: Whether to run `cabal test`.
+        type: boolean
+        required: false
+        default: true
+
+# General commentary
+# ------------------
+#
+# Steps that are less likely to fail should come later, because failing earlier
+# saves time and resources. For example, `cabal check` should come after `cabal
+# build`, because edits to the Cabal file are generally more rare than edits to
+# Haskell source files.
+jobs:
+  ci:
+    runs-on: ${{ inputs.os }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: haskell-actions/setup@v2
+      id: setup-haskell
+      with:
+        cabal-version: ${{ inputs.cabal }}
+        ghc-version: ${{ inputs.ghc }}
+    - name: cabal sdist
+      shell: bash
+      if: inputs.sdist
+      run: |
+        echo "::group::sdist"
+        cabal sdist -o sdist
+        mkdir unpacked
+        tar -C unpacked -xzf sdist/*.tar.gz
+        cd unpacked
+        echo "::endgroup::"
+    - uses: actions/cache/restore@v4
+      name: Restore Cabal cache
+      id: cache
+      env:
+        # Each `inputs.os` (e.g., `ubuntu-22.04-arm`) uniquely determines a
+        # `runner.arch` (e.g., ARM64), so there is no need to include the latter
+        # as part of the cache key.
+        key: cabal-${{ inputs.os }}-ghc${{ inputs.ghc }}
+      with:
+        path: |
+          ${{ steps.setup-haskell.outputs.cabal-store }}
+          dist-newstyle
+        # Use `github.ref` in the key for branch-specific caching. This is an
+        # appropriate default level of granularity. (In contrast, `github.sha`
+        # would be too granular.)
+        #
+        # The `restore-key` allows for restoring the cache from a different branch
+        # (e.g., the default branch) if none exists for the current branch (e.g.,
+        # on the first run on a new branch).
+        key: |
+          ${{ env.key }}-${{ github.ref }}
+        restore-keys: |
+          ${{ env.key }}-
+    - name: cabal configure
+      shell: bash
+      run: |
+        echo "::group::configure"
+        cabal configure ${{ inputs.configure-flags }} ${{ inputs.targets }}
+        echo "::endgroup"
+    # Note [Parallelism]
+    # ------------------
+    #
+    # We split the build into two steps:
+    #
+    # - Build only the dependencies. Build them in parallel at the package level
+    #   (which is Cabal's default, see haskell/cabal#5776).
+    # - Build this project (a single package). Use --ghc-options=-j (in the
+    #   `configure` step) to build local packages' modules in parallel.
+    #
+    # This scheme maximizes the use of parallelism while avoiding
+    # oversubscription. See GHC proposal #540 for additional background. It would
+    # be nice to replace this with `cabal configure --semaphore`, but this only
+    # became available with GHC 9.8. To support older versions, we don't use it
+    # just yet.
+    - name: cabal build --only-dependencies
+      shell: bash
+      run: |
+        echo "::group::dependencies"
+        cabal build --only-dependencies ${{ inputs.targets }}
+        echo "::endgroup"
+    - name: cabal build
+      shell: bash
+      run: |
+        echo "::group::build"
+        cabal build ${{ inputs.targets }}
+        echo "::endgroup"
+    - name: cabal test
+      shell: bash
+      run: |
+        echo "::group::test"
+        cabal test ${{ inputs.targets }}
+        echo "::endgroup"
+    - name: cabal check
+      shell: bash
+      if: inputs.check
+      run: |
+        echo "::group::check"
+        cabal check
+        echo "::endgroup"
+    # Build the Haddocks to ensure that they are well formed. Somewhat
+    # counterintuitively, we run this with the --disable-documentation flag. This
+    # does not mean "do not build the Haddocks", but rather, "build the Haddocks
+    # for the top-level library, but do not build dependencies with Haddocks".
+    # The upshot is that we do not change the build configuration for any
+    # dependencies, which means that we don't have to rebuild them. The downside
+    # is that the rendered Haddocks won't contain any links to identifiers from
+    # library dependencies. Since we are only building Haddocks to ensure well-
+    # formedness, we consider this an acceptable tradeoff.
+    - name: cabal haddock
+      shell: bash
+      if: inputs.haddock
+      run: |
+        echo "::group::haddock"
+        cabal haddock --disable-documentation ${{ inputs.targets }}
+        echo "::endgroup"
+    - uses: actions/cache/save@v4
+      name: Save Cabal cache
+      # Always save the cache, even if a previous step fails. (By default, the
+      # `cache` action will skip saving the cache, which would require every
+      # subsequent CI job to rebuild the dependencies until there is a successful
+      # job.)
+      if: always()
+      with:
+        path: |
+          ${{ steps.setup-haskell.outputs.cabal-store }}
+          dist-newstyle
+        key: ${{ steps.cache.outputs.cache-primary-key }}
+    # Projects support older Cabal versions so that users can build the project
+    # even if they lack access to the latest Cabal package, e.g., when using the
+    # version provided by their OS package manager on older systems.
+    #
+    # Rather than running the whole CI workflow with multiple Cabal versions
+    # (e.g., in the `matrix`), we run the equivalent of `cabal clean`, but
+    # using the version of the Cabal library that is bundled with GHC. This is
+    # sufficient to check that the bundled version of Cabal can parse the Cabal
+    # configuration files (`.cabal`, `cabal.project{,freeze}`). This guarantees
+    # that our package can be built with the versions of Cabal that are likely to
+    # be available alongside the supported versions of GHC.
+    #
+    # We run this after `actions/cache/save` since it deletes most of
+    # `dist-newstyle`.
+    - name: Check Cabal/GHC compatibility
+      shell: bash
+      run: |
+        echo "::group::compat"
+        for dir in ${{ inputs.compat-dirs }}; do
+          cd "${{ github.workspace }}/${dir}"
+          echo 'import Distribution.Simple; main = defaultMain' > Setup.hs
+          runhaskell Setup.hs clean
+        done
+        echo "::endgroup"
