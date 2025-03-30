@@ -1,5 +1,9 @@
 name: Haskell CI
 
+defaults:
+  run:
+    shell: bash --noprofile --norc -euxo pipefail {0}
+
 on:
   workflow_call:
     inputs:
@@ -80,7 +84,6 @@ jobs:
         cabal-version: ${{ inputs.cabal }}
         ghc-version: ${{ inputs.ghc }}
     - name: cabal sdist
-      shell: bash
       if: inputs.sdist
       run: |
         cabal sdist -o sdist
@@ -110,8 +113,7 @@ jobs:
           ${{ env.key }}-${{ github.ref }}
         restore-keys: |
           ${{ env.key }}-
-    - shell: bash
-      run: cabal configure ${{ inputs.configure-flags }} ${{ inputs.targets }}
+    - run: cabal configure ${{ inputs.configure-flags }} ${{ inputs.targets }}
     # Note [Parallelism]
     # ------------------
     #
@@ -127,15 +129,11 @@ jobs:
     # be nice to replace this with `cabal configure --semaphore`, but this only
     # became available with GHC 9.8. To support older versions, we don't use it
     # just yet.
-    - shell: bash
-      run: cabal build --only-dependencies ${{ inputs.targets }}
-    - shell: bash
-      run: cabal build ${{ inputs.targets }}
-    - shell: bash
-      run: cabal test ${{ inputs.targets }}
-    - shell: bash
+    - run: cabal build --only-dependencies ${{ inputs.targets }}
+    - run: cabal build ${{ inputs.targets }}
+    - run: cabal test ${{ inputs.targets }}
+    - run: cabal check
       if: inputs.check
-      run: cabal check
     # Build the Haddocks to ensure that they are well formed. Somewhat
     # counterintuitively, we run this with the --disable-documentation flag. This
     # does not mean "do not build the Haddocks", but rather, "build the Haddocks
@@ -145,9 +143,8 @@ jobs:
     # is that the rendered Haddocks won't contain any links to identifiers from
     # library dependencies. Since we are only building Haddocks to ensure well-
     # formedness, we consider this an acceptable tradeoff.
-    - shell: bash
+    - run: cabal haddock --disable-documentation ${{ inputs.targets }}
       if: inputs.haddock
-      run: cabal haddock --disable-documentation ${{ inputs.targets }}
     - uses: actions/cache/save@v4
       name: Save Cabal cache
       # Always save the cache, even if a previous step fails. (By default, the
@@ -175,7 +172,7 @@ jobs:
     # We run this after `actions/cache/save` since it deletes most of
     # `dist-newstyle`.
     - name: Check Cabal/GHC compatibility
-      shell: bash
+      if: inputs.compat
       run: |
         for dir in ${{ inputs.compat-dirs }}; do
           cd "${{ github.workspace }}/${dir}"
