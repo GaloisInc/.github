@@ -86,10 +86,13 @@ jobs:
     - name: cabal sdist
       if: inputs.sdist
       run: |
-        cabal sdist -o sdist
-        mkdir unpacked
-        tar -C unpacked -xzf sdist/*.tar.gz
-        cd unpacked
+        if [[ "${{ inputs.sdist }}" == true ]]; then
+          cabal sdist -o sdist
+          mkdir -p unpacked
+          tar -C unpacked -xzf sdist/*.tar.gz
+          cd unpacked/*
+        fi
+        echo "WORK_DIR=$(pwd)" >> $GITHUB_ENV
     - uses: actions/cache/restore@v4
       name: Restore Cabal cache
       id: cache
@@ -101,7 +104,7 @@ jobs:
       with:
         path: |
           ${{ steps.setup-haskell.outputs.cabal-store }}
-          ${{ inputs.sdist && "unpacked/dist-newstyle" || "dist-newstyle" }}
+          ${{ env.WORK_DIR }}/dist-newstyle
         # Use `github.ref` in the key for branch-specific caching. This is an
         # appropriate default level of granularity. (In contrast, `github.sha`
         # would be too granular.)
@@ -114,7 +117,7 @@ jobs:
         restore-keys: |
           ${{ env.key }}-
     - run: cabal configure ${{ inputs.configure-flags }} ${{ inputs.targets }}
-      working-directory: ${{ inputs.sdist && 'unpacked' || '.' }}
+      working-directory: ${{ env.WORK_DIR }}
     # Note [Parallelism]
     # ------------------
     #
@@ -131,14 +134,14 @@ jobs:
     # became available with GHC 9.8. To support older versions, we don't use it
     # just yet.
     - run: cabal build --only-dependencies ${{ inputs.targets }}
-      working-directory: ${{ inputs.sdist && 'unpacked' || '.' }}
+      working-directory: ${{ env.WORK_DIR }}
     - run: cabal build ${{ inputs.targets }}
-      working-directory: ${{ inputs.sdist && 'unpacked' || '.' }}
+      working-directory: ${{ env.WORK_DIR }}
     - run: cabal test ${{ inputs.targets }}
-      working-directory: ${{ inputs.sdist && 'unpacked' || '.' }}
+      working-directory: ${{ env.WORK_DIR }}
     - run: cabal check
       if: inputs.check
-      working-directory: ${{ inputs.sdist && 'unpacked' || '.' }}
+      working-directory: ${{ env.WORK_DIR }}
     # Build the Haddocks to ensure that they are well formed. Somewhat
     # counterintuitively, we run this with the --disable-documentation flag. This
     # does not mean "do not build the Haddocks", but rather, "build the Haddocks
@@ -150,7 +153,7 @@ jobs:
     # formedness, we consider this an acceptable tradeoff.
     - run: cabal haddock --disable-documentation ${{ inputs.targets }}
       if: inputs.haddock
-      working-directory: ${{ inputs.sdist && 'unpacked' || '.' }}
+      working-directory: ${{ env.WORK_DIR }}
     - uses: actions/cache/save@v4
       name: Save Cabal cache
       # Always save the cache, even if a previous step fails. (By default, the
@@ -161,7 +164,7 @@ jobs:
       with:
         path: |
           ${{ steps.setup-haskell.outputs.cabal-store }}
-          ${{ inputs.sdist && "unpacked/dist-newstyle" || "dist-newstyle" }}
+          ${{ env.WORK_DIR }}/dist-newstyle
         key: ${{ steps.cache.outputs.cache-primary-key }}
     # Projects support older Cabal versions so that users can build the project
     # even if they lack access to the latest Cabal package, e.g., when using the
@@ -181,7 +184,7 @@ jobs:
       if: inputs.compat
       run: |
         for dir in ${{ inputs.compat-dirs }}; do
-          cd "${{ inputs.sdist && format("{0}/{1}", github.workspace, "unpacked") || github.workspace }}/${dir}"
+          cd "${WORK_DIR}/${dir}"
           echo 'import Distribution.Simple; main = defaultMain' > Setup.hs
           runhaskell Setup.hs clean
         done
