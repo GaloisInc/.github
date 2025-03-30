@@ -70,7 +70,7 @@ jobs:
 
 ## Workflows
 
-### [`haskell-ci`](./workflows/haskell-ci.yml)
+### [`haskell-ci`](./.github/workflows/haskell-ci.yml)
 
 Build and test single-package Haskell projects using Cabal. Performs a sequence
 of steps that are appropriate for many projects, namely:
