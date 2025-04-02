@@ -124,7 +124,8 @@ jobs:
         # Use `github.ref` in the key for branch-specific caching.
         #
         # Include `github.sha` to allow saving a new cache even when there was a
-        # cache hit. See https://github.com/actions/cache/issues/109.
+        # cache hit. See https://github.com/actions/cache/issues/109 and
+        # https://github.com/actions/cache/issues/342.
         #
         # The `restore-key` allows for restoring the cache from a different branch
         # (e.g., the default branch) if none exists for the current branch (e.g.,
