@@ -85,13 +85,15 @@ jobs:
   CI:
     runs-on: ${{ inputs.os }}
     steps:
-    - uses: actions/checkout@v4
-    - uses: haskell-actions/setup@v2
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Install Cabal and GHC
+      uses: haskell-actions/setup@v2
       id: setup-haskell
       with:
         cabal-version: ${{ inputs.cabal }}
         ghc-version: ${{ inputs.ghc }}
-    - name: cabal sdist
+    - name: Create sdist
       if: inputs.sdist
       run: |
         if [[ "${{ inputs.sdist }}" == true ]]; then
@@ -101,8 +103,8 @@ jobs:
           cd unpacked/*
         fi
         echo "WORK_DIR=$(pwd)" >> $GITHUB_ENV
-    - uses: actions/cache/restore@v4
-      name: Restore Cabal cache
+    - name: Restore Cabal cache
+      uses: actions/cache/restore@v4
       id: cache
       env:
         # Each `inputs.os` (e.g., `ubuntu-22.04-arm`) uniquely determines a
@@ -126,7 +128,8 @@ jobs:
         restore-keys: |
           ${{ env.key }}-${{ github.ref }}
           ${{ env.key }}-
-    - run: cabal configure ${{ inputs.configure-flags }} ${{ inputs.build-targets }} ${{ inputs.test-targets }}
+    - name: Configure
+      run: cabal configure ${{ inputs.configure-flags }} ${{ inputs.build-targets }} ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
     # Note [Parallelism]
     # ------------------
@@ -143,13 +146,17 @@ jobs:
     # be nice to replace this with `cabal configure --semaphore`, but this only
     # became available with GHC 9.8. To support older versions, we don't use it
     # just yet.
-    - run: cabal build --only-dependencies ${{ inputs.build-targets }} ${{ inputs.test-targets }}
+    - name: Build dependencies
+      run: cabal build --only-dependencies ${{ inputs.build-targets }} ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
-    - run: cabal build ${{ inputs.build-targets }}
+    - name: Build
+      run: cabal build ${{ inputs.build-targets }}
       working-directory: ${{ env.WORK_DIR }}
-    - run: cabal test ${{ inputs.test-targets }}
+    - name: Test
+      run: cabal test ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
-    - run: cabal check
+    - name: Check Hackage requirements
+      run: cabal check
       if: inputs.check
       working-directory: ${{ env.WORK_DIR }}
     # Build the Haddocks to ensure that they are well formed. Somewhat
@@ -161,11 +168,12 @@ jobs:
     # is that the rendered Haddocks won't contain any links to identifiers from
     # library dependencies. Since we are only building Haddocks to ensure well-
     # formedness, we consider this an acceptable tradeoff.
-    - run: cabal haddock --disable-documentation ${{ inputs.build-targets }}
+    - name: Haddock
+      run: cabal haddock --disable-documentation ${{ inputs.build-targets }}
       if: inputs.haddock
       working-directory: ${{ env.WORK_DIR }}
-    - uses: actions/cache/save@v4
-      name: Save Cabal cache
+    - name: Save Cabal cache
+      uses: actions/cache/save@v4
       # Always save the cache, even if a previous step fails. (By default, the
       # `cache` action will skip saving the cache, which would require every
       # subsequent CI job to rebuild the dependencies until there is a successful
