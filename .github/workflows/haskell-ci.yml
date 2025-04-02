@@ -60,6 +60,9 @@ on:
           Whether to run `cabal sdist`.
 
           This will also cause later steps to be run in the unpacked sdist.
+          Doing so verifies that the `.cabal` file lists the full set of files
+          (data files, documentation files, etc.) necessary for the build and
+          test suite.
         type: boolean
         required: false
         default: true
