@@ -110,7 +110,7 @@ jobs:
         # Each `inputs.os` (e.g., `ubuntu-22.04-arm`) uniquely determines a
         # `runner.arch` (e.g., ARM64), so there is no need to include the latter
         # as part of the cache key.
-        key: cabal-${{ inputs.os }}-ghc${{ inputs.ghc }}
+        key: haskell-ci-${{ inputs.os }}-cabal${{ steps.setup-haskell.outputs.cabal-version }}-ghc${{ steps.setup-haskell.outputs.ghc-version }}
       with:
         path: |
           ${{ steps.setup-haskell.outputs.cabal-store }}
