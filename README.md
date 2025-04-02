@@ -85,6 +85,22 @@ of steps that are appropriate for many projects, namely:
 This workflow will not be applicable to all projects, but it is applicable to
 enough to be useful.
 
+This workflow shares some goals with the [haskell-ci] tool. Here are a few
+points of comparison:
+
+- This workflow provides extensive documentation and commentary, both user-
+  facing and in the implementation.
+- As a reusable workflow, this workflow is used in the `uses` part of a 
+  job. So:
+  
+  - The calling workflow is free to customize other fields such as
+    the workflow-level `on:` field.[^on]
+  - Other jobs may run as part of the same calling workflow, and in particular,
+    can set `inputs`.
+
+[haskell-ci]: https://github.com/haskell-CI/haskell-ci
+[^on]: As an example of why such customization is important, it appears that the haskell-ci tool hardcodes `on:` to trigger on pushes and pull requests into the main branch. Not only may this not be appropriate for all projects (consider, for example, projects that use pull requests into a separate `dev` branch), it causes double-builds for pull requests targeting the main branch from a branch in the same repo.
+
 For a description of the inputs, see the workflow itself.
 
 Example:
