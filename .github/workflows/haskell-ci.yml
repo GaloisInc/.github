@@ -51,7 +51,10 @@ on:
         type: string
         required: true
       sdist:
-        description: Whether to run `cabal sdist`.
+        description: |
+          Whether to run `cabal sdist`.
+
+          This will also cause later steps to be run in the unpacked sdist.
         type: boolean
         required: false
         default: true
@@ -105,16 +108,18 @@ jobs:
         path: |
           ${{ steps.setup-haskell.outputs.cabal-store }}
           ${{ env.WORK_DIR }}/dist-newstyle
-        # Use `github.ref` in the key for branch-specific caching. This is an
-        # appropriate default level of granularity. (In contrast, `github.sha`
-        # would be too granular.)
+        # Use `github.ref` in the key for branch-specific caching.
+        #
+        # Include `github.sha` to allow saving a new cache even when there was a
+        # cache hit. See https://github.com/actions/cache/issues/109.
         #
         # The `restore-key` allows for restoring the cache from a different branch
         # (e.g., the default branch) if none exists for the current branch (e.g.,
         # on the first run on a new branch).
         key: |
-          ${{ env.key }}-${{ github.ref }}
+          ${{ env.key }}-${{ github.ref }}-${{ github.sha }}
         restore-keys: |
+          ${{ env.key }}-${{ github.ref }}
           ${{ env.key }}-
     - run: cabal configure ${{ inputs.configure-flags }} ${{ inputs.targets }}
       working-directory: ${{ env.WORK_DIR }}
