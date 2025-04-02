@@ -123,17 +123,12 @@ jobs:
           ${{ env.WORK_DIR }}/dist-newstyle
         # Use `github.ref` in the key for branch-specific caching.
         #
-        # Include `github.sha` to allow saving a new cache even when there was a
-        # cache hit. See https://github.com/actions/cache/issues/109 and
-        # https://github.com/actions/cache/issues/342.
-        #
         # The `restore-key` allows for restoring the cache from a different branch
         # (e.g., the default branch) if none exists for the current branch (e.g.,
         # on the first run on a new branch).
         key: |
-          ${{ env.key }}-${{ github.ref }}-${{ github.sha }}
-        restore-keys: |
           ${{ env.key }}-${{ github.ref }}
+        restore-keys: |
           ${{ env.key }}-
     - name: Configure
       run: cabal configure ${{ inputs.configure-flags }} ${{ inputs.build-targets }} ${{ inputs.test-targets }}
@@ -179,12 +174,20 @@ jobs:
       run: cabal haddock --disable-documentation ${{ inputs.build-targets }}
       if: inputs.haddock
       working-directory: ${{ env.WORK_DIR }}
+    # Delete the old cache on hit to emulate a cache "update". See
+    # https://github.com/actions/cache/issues/109 and
+    # https://github.com/actions/cache/issues/342.
+    - name: Delete old Cabal cache
+      env:
+        GH_TOKEN: ${{ github.token }}
+      if: ${{ steps.cache.outputs.cache-hit }}
+      run: gh cache delete ${{ steps.cache.outputs.cache-primary-key }}
     - name: Save Cabal cache
       uses: actions/cache/save@v4
       # Always save the cache, even if a previous step fails. (By default, the
-      # `cache` action will skip saving the cache, which would require every
-      # subsequent CI job to rebuild the dependencies until there is a successful
-      # job.)
+      # `cache` action will skip saving the cache in this case, which would
+      # require every subsequent CI job to rebuild the dependencies until there
+      # is a successful job.)
       if: always()
       with:
         path: |
