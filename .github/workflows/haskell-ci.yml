@@ -84,6 +84,9 @@ on:
 # saves time and resources. For example, `cabal check` should come after `cabal
 # build`, because edits to the Cabal file are generally more rare than edits to
 # Haskell source files.
+#
+# `cabal configure` should come before steps such as `cabal build` or `cabal
+# test`, because it affects how those steps execute.
 jobs:
   CI:
     runs-on: ${{ inputs.os }}
