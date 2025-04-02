@@ -7,6 +7,11 @@ defaults:
 on:
   workflow_call:
     inputs:
+      build-targets:
+        description: Cabal targets to build, e.g. `lib:my-lib`.
+        type: string
+        required: false
+        default: all
       cabal:
         description: Cabal version, e.g., "3.12.0.0"
         type: string
@@ -58,16 +63,16 @@ on:
         type: boolean
         required: false
         default: true
-      targets:
-        description: Cabal targets to build, e.g. `lib:my-lib`.
-        type: string
-        required: false
-        default: all
       test:
         description: Whether to run `cabal test`.
         type: boolean
         required: false
         default: true
+      test-targets:
+        description: Cabal targets to test, e.g. `test:my-tests`.
+        type: string
+        required: false
+        default: all
 
 # General commentary
 # ------------------
@@ -121,7 +126,7 @@ jobs:
         restore-keys: |
           ${{ env.key }}-${{ github.ref }}
           ${{ env.key }}-
-    - run: cabal configure ${{ inputs.configure-flags }} ${{ inputs.targets }}
+    - run: cabal configure ${{ inputs.configure-flags }} ${{ inputs.build-targets }} ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
     # Note [Parallelism]
     # ------------------
@@ -138,11 +143,11 @@ jobs:
     # be nice to replace this with `cabal configure --semaphore`, but this only
     # became available with GHC 9.8. To support older versions, we don't use it
     # just yet.
-    - run: cabal build --only-dependencies ${{ inputs.targets }}
+    - run: cabal build --only-dependencies ${{ inputs.build-targets }} ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
-    - run: cabal build ${{ inputs.targets }}
+    - run: cabal build ${{ inputs.build-targets }}
       working-directory: ${{ env.WORK_DIR }}
-    - run: cabal test ${{ inputs.targets }}
+    - run: cabal test ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
     - run: cabal check
       if: inputs.check
@@ -156,7 +161,7 @@ jobs:
     # is that the rendered Haddocks won't contain any links to identifiers from
     # library dependencies. Since we are only building Haddocks to ensure well-
     # formedness, we consider this an acceptable tradeoff.
-    - run: cabal haddock --disable-documentation ${{ inputs.targets }}
+    - run: cabal haddock --disable-documentation ${{ inputs.build-targets }}
       if: inputs.haddock
       working-directory: ${{ env.WORK_DIR }}
     - uses: actions/cache/save@v4
