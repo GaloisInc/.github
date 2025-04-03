@@ -165,14 +165,10 @@ jobs:
     - name: Build
       run: cabal build ${{ inputs.build-targets }}
       working-directory: ${{ env.WORK_DIR }}
-    - name: Test
-      run: cabal test ${{ inputs.test-targets }}
-      working-directory: ${{ env.WORK_DIR }}
-    - name: Check Hackage requirements
-      run: cabal check
-      if: inputs.check
-      working-directory: ${{ env.WORK_DIR }}
     # See "Delete old Cabal cache" step below
+    #
+    # This comes before "Test" because the test suite puts a log file in
+    # `dist-newstyle`.
     #
     # This comes before "Haddock" because Haddocks are considered an "ephemeral
     # target", and so are always rebuilt (thus changing the contents of
@@ -186,6 +182,13 @@ jobs:
         sha256sum |
         echo "CACHE_POST_HASH=$(cat)" >>
         $GITHUB_ENV
+    - name: Test
+      run: cabal test ${{ inputs.test-targets }}
+      working-directory: ${{ env.WORK_DIR }}
+    - name: Check Hackage requirements
+      run: cabal check
+      if: inputs.check
+      working-directory: ${{ env.WORK_DIR }}
     # Build the Haddocks to ensure that they are well formed. Somewhat
     # counterintuitively, we run this with the --disable-documentation flag. This
     # does not mean "do not build the Haddocks", but rather, "build the Haddocks
