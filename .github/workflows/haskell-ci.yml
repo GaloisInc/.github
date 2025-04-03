@@ -118,7 +118,6 @@ jobs:
         # as part of the cache key.
         key: haskell-ci-${{ inputs.os }}-cabal${{ steps.setup-haskell.outputs.cabal-version }}-ghc${{ steps.setup-haskell.outputs.ghc-version }}
       with:
-        # These paths also appear in the "Hash the cache{, again}" steps
         path: |
           ${{ steps.setup-haskell.outputs.cabal-store }}
           ${{ env.WORK_DIR }}/dist-newstyle
@@ -131,16 +130,6 @@ jobs:
           ${{ env.key }}-${{ github.ref }}
         restore-keys: |
           ${{ env.key }}-
-    # See "Delete old Cabal cache" step below
-    - name: Hash the cache
-      if: steps.cache.outputs.cache-hit
-      run: >
-        tar cf -
-        ${{ steps.setup-haskell.outputs.cabal-store }}
-        ${{ env.WORK_DIR }}/dist-newstyle |
-        sha256sum |
-        echo "CACHE_PRE_HASH=$(cat)" >>
-        $GITHUB_ENV
     - name: Configure
       run: cabal configure ${{ inputs.configure-flags }} ${{ inputs.build-targets }} ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
@@ -165,23 +154,6 @@ jobs:
     - name: Build
       run: cabal build ${{ inputs.build-targets }}
       working-directory: ${{ env.WORK_DIR }}
-    # See "Delete old Cabal cache" step below
-    #
-    # This comes before "Test" because the test suite puts a log file in
-    # `dist-newstyle`.
-    #
-    # This comes before "Haddock" because Haddocks are considered an "ephemeral
-    # target", and so are always rebuilt (thus changing the contents of
-    # `dist-newstyle`).
-    - name: Hash the cache again
-      if: steps.cache.outputs.cache-hit
-      run: >
-        tar cf -
-        ${{ steps.setup-haskell.outputs.cabal-store }}
-        ${{ env.WORK_DIR }}/dist-newstyle |
-        sha256sum |
-        echo "CACHE_POST_HASH=$(cat)" >>
-        $GITHUB_ENV
     - name: Test
       run: cabal test ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
@@ -206,11 +178,16 @@ jobs:
     # https://github.com/actions/cache/issues/109 and
     # https://github.com/actions/cache/issues/342.
     #
-    # Only delete the cache if the content has changed.
+    # Ideally, we would only delete and re-upload the cache if the content
+    # has changed. In practice, `dist-newstyle` changes even on no-op `cabal
+    # build`s. It may be possible to do better, but this workflow is reasonably
+    # performant as it stands. See
+    # https://github.com/GaloisInc/.github/pull/18#discussion_r2027105101
+    # for discussion.
     - name: Delete old Cabal cache
       env:
         GH_TOKEN: ${{ github.token }}
-      if: steps.cache.outputs.cache-hit && env.CACHE_PRE_HASH != env.CACHE_POST_HASH
+      if: steps.cache.outputs.cache-hit
       run: gh cache delete ${{ steps.cache.outputs.cache-primary-key }}
     - name: Save Cabal cache
       uses: actions/cache/save@v4
