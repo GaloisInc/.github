@@ -133,6 +133,7 @@ jobs:
           ${{ env.key }}-
     # See "Delete old Cabal cache" step below
     - name: Hash the cache
+      if: steps.cache.outputs.cache-hit
       run: >
         tar cf -
         ${{ steps.setup-haskell.outputs.cabal-store }}
@@ -171,6 +172,20 @@ jobs:
       run: cabal check
       if: inputs.check
       working-directory: ${{ env.WORK_DIR }}
+    # See "Delete old Cabal cache" step below
+    #
+    # This comes before "Haddock" because Haddocks are considered an "ephemeral
+    # target", and so are always rebuilt (thus changing the contents of
+    # `dist-newstyle`).
+    - name: Hash the cache again
+      if: steps.cache.outputs.cache-hit
+      run: >
+        tar cf -
+        ${{ steps.setup-haskell.outputs.cabal-store }}
+        ${{ env.WORK_DIR }}/dist-newstyle |
+        sha256sum |
+        echo "CACHE_POST_HASH=$(cat)" >>
+        $GITHUB_ENV
     # Build the Haddocks to ensure that they are well formed. Somewhat
     # counterintuitively, we run this with the --disable-documentation flag. This
     # does not mean "do not build the Haddocks", but rather, "build the Haddocks
@@ -184,15 +199,6 @@ jobs:
       run: cabal haddock --disable-documentation ${{ inputs.build-targets }}
       if: inputs.haddock
       working-directory: ${{ env.WORK_DIR }}
-    # See "Delete old Cabal cache" step below
-    - name: Hash the cache again
-      run: >
-        tar cf -
-        ${{ steps.setup-haskell.outputs.cabal-store }}
-        ${{ env.WORK_DIR }}/dist-newstyle |
-        sha256sum |
-        echo "CACHE_POST_HASH=$(cat)" >>
-        $GITHUB_ENV
     # Delete the old cache on hit to emulate a cache "update". See
     # https://github.com/actions/cache/issues/109 and
     # https://github.com/actions/cache/issues/342.
