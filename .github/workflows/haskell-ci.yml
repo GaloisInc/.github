@@ -60,6 +60,9 @@ on:
           Whether to run `cabal sdist`.
 
           This will also cause later steps to be run in the unpacked sdist.
+          Doing so verifies that the `.cabal` file lists the full set of files
+          (data files, documentation files, etc.) necessary for the build and
+          test suite.
         type: boolean
         required: false
         default: true
@@ -81,6 +84,9 @@ on:
 # saves time and resources. For example, `cabal check` should come after `cabal
 # build`, because edits to the Cabal file are generally more rare than edits to
 # Haskell source files.
+#
+# `cabal configure` should come before steps such as `cabal build` or `cabal
+# test`, because it affects how those steps execute.
 jobs:
   CI:
     runs-on: ${{ inputs.os }}
@@ -110,23 +116,19 @@ jobs:
         # Each `inputs.os` (e.g., `ubuntu-22.04-arm`) uniquely determines a
         # `runner.arch` (e.g., ARM64), so there is no need to include the latter
         # as part of the cache key.
-        key: cabal-${{ inputs.os }}-ghc${{ inputs.ghc }}
+        key: haskell-ci-${{ inputs.os }}-cabal${{ steps.setup-haskell.outputs.cabal-version }}-ghc${{ steps.setup-haskell.outputs.ghc-version }}
       with:
         path: |
           ${{ steps.setup-haskell.outputs.cabal-store }}
           ${{ env.WORK_DIR }}/dist-newstyle
         # Use `github.ref` in the key for branch-specific caching.
         #
-        # Include `github.sha` to allow saving a new cache even when there was a
-        # cache hit. See https://github.com/actions/cache/issues/109.
-        #
         # The `restore-key` allows for restoring the cache from a different branch
         # (e.g., the default branch) if none exists for the current branch (e.g.,
         # on the first run on a new branch).
         key: |
-          ${{ env.key }}-${{ github.ref }}-${{ github.sha }}
-        restore-keys: |
           ${{ env.key }}-${{ github.ref }}
+        restore-keys: |
           ${{ env.key }}-
     - name: Configure
       run: cabal configure ${{ inputs.configure-flags }} ${{ inputs.build-targets }} ${{ inputs.test-targets }}
@@ -172,12 +174,27 @@ jobs:
       run: cabal haddock --disable-documentation ${{ inputs.build-targets }}
       if: inputs.haddock
       working-directory: ${{ env.WORK_DIR }}
+    # Delete the old cache on hit to emulate a cache "update". See
+    # https://github.com/actions/cache/issues/109 and
+    # https://github.com/actions/cache/issues/342.
+    #
+    # Ideally, we would only delete and re-upload the cache if the content
+    # has changed. In practice, `dist-newstyle` changes even on no-op `cabal
+    # build`s. It may be possible to do better, but this workflow is reasonably
+    # performant as it stands. See
+    # https://github.com/GaloisInc/.github/pull/18#discussion_r2027105101
+    # for discussion.
+    - name: Delete old Cabal cache
+      env:
+        GH_TOKEN: ${{ github.token }}
+      if: steps.cache.outputs.cache-hit
+      run: gh cache delete ${{ steps.cache.outputs.cache-primary-key }}
     - name: Save Cabal cache
       uses: actions/cache/save@v4
       # Always save the cache, even if a previous step fails. (By default, the
-      # `cache` action will skip saving the cache, which would require every
-      # subsequent CI job to rebuild the dependencies until there is a successful
-      # job.)
+      # `cache` action will skip saving the cache in this case, which would
+      # require every subsequent CI job to rebuild the dependencies until there
+      # is a successful job.)
       if: always()
       with:
         path: |
