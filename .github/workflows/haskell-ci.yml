@@ -109,7 +109,6 @@ jobs:
         cabal-version: ${{ inputs.cabal }}
         ghc-version: ${{ inputs.ghc }}
     - name: Create sdist
-      if: inputs.sdist
       run: |
         if [[ "${{ inputs.sdist }}" == true ]]; then
           cabal sdist -o sdist
