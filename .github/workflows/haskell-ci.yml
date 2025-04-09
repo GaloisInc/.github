@@ -66,6 +66,11 @@ on:
         type: boolean
         required: false
         default: true
+      submodules:
+        description: Whether to check out submodules. Passed to `actions/checkout`.
+        type: string
+        required: false
+        default: "false"
       test:
         description: Whether to run `cabal test`.
         type: boolean
@@ -96,6 +101,7 @@ jobs:
       with:
         # https://github.com/actions/checkout/issues/485
         persist-credentials: false
+        submodules: ${{ inputs.submodules }}
     - name: Install Cabal and GHC
       uses: haskell-actions/setup@v2
       id: setup-haskell
