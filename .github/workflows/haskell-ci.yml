@@ -38,6 +38,11 @@ on:
         required: false
         # For an explanation of `--ghc-options='-j'`, see Note [Parallelism].
         default: --ghc-options='-j' --enable-tests
+      fetch-depth:
+        description: Number of commits to fetch. Passed to `actions/checkout`.
+        type: number
+        required: false
+        default: 1
       ghc:
         description: GHC version, e.g., "9.10.1"
         type: string
@@ -99,6 +104,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       with:
+        fetch-depth: ${{ inputs.fetch-depth }}
         # https://github.com/actions/checkout/issues/485
         persist-credentials: false
         submodules: ${{ inputs.submodules }}
