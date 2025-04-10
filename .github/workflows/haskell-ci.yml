@@ -146,7 +146,12 @@ jobs:
           tar -C unpacked -xzf sdist/*.tar.gz
           cd unpacked/*
         fi
-        echo "WORK_DIR=$(pwd)" >> $GITHUB_ENV
+        if [[ ${{ runner.os }} == Windows ]]; then
+          wd="$(cmd //c cd)"
+        else
+          wd="$(pwd)"
+        fi
+        echo "WORK_DIR=${wd}" >> $GITHUB_ENV
     - name: Restore Cabal cache
       uses: actions/cache/restore@v4
       id: cache
