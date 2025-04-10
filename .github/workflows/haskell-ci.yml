@@ -154,6 +154,12 @@ jobs:
           ${{ env.key }}-${{ github.ref }}
         restore-keys: |
           ${{ env.key }}-
+    - name: Copy freeze file
+      run: |
+        freeze="cabal.GHC-${{ steps.setup-haskell.outputs.ghc-version }}.config"
+        if [[ -f ${freeze} ]]; then
+          cp "${freeze}" cabal.project.freeze
+        fi
     - name: Configure
       run: cabal configure ${{ inputs.configure-flags }} ${{ inputs.build-targets }} ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
