@@ -80,6 +80,11 @@ on:
         type: boolean
         required: false
         default: true
+      sdist-targets:
+        description: Targets passed to `cabal sdist`.
+        type: string
+        required: false
+        default: ""
       submodules:
         description: Whether to check out submodules. Passed to `actions/checkout`.
         type: string
@@ -128,7 +133,7 @@ jobs:
     - name: Create sdist
       run: |
         if [[ "${{ inputs.sdist }}" == true ]]; then
-          cabal sdist -o sdist
+          cabal sdist -o sdist ${{ inputs.sdist-targets }}
           mkdir -p unpacked
           tar -C unpacked -xzf sdist/*.tar.gz
           cd unpacked/*
