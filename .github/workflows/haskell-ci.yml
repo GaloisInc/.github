@@ -22,6 +22,7 @@ on:
           Prefix to add to cache key(s).
 
           May be used to distinguish caches for multiple packages in the same repo.
+          Can also be used to force a cache miss.
         type: string
         required: false
         default: ""
@@ -68,12 +69,17 @@ on:
           Set this to the value of `runs-on`, *not* `runner.os`.
         type: string
         required: true
+      post-hook:
+        description: Shell commands to execute after the rest of the workflow.
+        type: string
+        required: false
+        default: ""
       pre-hook:
         description: |
-          Shell commands to execute before the remainder of the action.
+          Shell commands to execute before the rest of the workflow.
 
           Useful for e.g., installing runtime dependencies for test-suites.
-          Runs immedately after `actions/checkout`.
+          Runs immediately after `actions/checkout`.
         type: string
         required: false
         default: ""
@@ -89,7 +95,10 @@ on:
         required: false
         default: true
       sdist-targets:
-        description: Targets passed to `cabal sdist`.
+        description: |
+          Targets passed to `cabal sdist`.
+
+          If not specified, defaults to all targets.
         type: string
         required: false
         default: ""
@@ -272,3 +281,5 @@ jobs:
           echo 'import Distribution.Simple; main = defaultMain' > Setup.hs
           runhaskell Setup.hs clean
         done
+    - name: Run post-hook
+      run: ${{ inputs.post-hook }}
