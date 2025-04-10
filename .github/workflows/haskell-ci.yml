@@ -65,6 +65,7 @@ on:
           Shell commands to execute before the remainder of the action.
 
           Useful for e.g., installing runtime dependencies for test-suites.
+          Runs immedately after `actions/checkout`.
         type: string
         required: false
         default: ""
@@ -109,8 +110,6 @@ jobs:
   CI:
     runs-on: ${{ inputs.os }}
     steps:
-    - name: Run pre-hook
-      run: ${{ inputs.pre-hook }}
     - name: Checkout
       uses: actions/checkout@v4
       with:
@@ -118,6 +117,8 @@ jobs:
         # https://github.com/actions/checkout/issues/485
         persist-credentials: false
         submodules: ${{ inputs.submodules }}
+    - name: Run pre-hook
+      run: ${{ inputs.pre-hook }}
     - name: Install Cabal and GHC
       uses: haskell-actions/setup@v2
       id: setup-haskell
