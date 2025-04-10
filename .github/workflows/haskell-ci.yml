@@ -60,6 +60,14 @@ on:
           Set this to the value of `runs-on`, *not* `runner.os`.
         type: string
         required: true
+      pre-hook:
+        description: |
+          Shell commands to execute before the remainder of the action.
+
+          Useful for e.g., installing runtime dependencies for test-suites.
+        type: string
+        required: false
+        default: ""
       sdist:
         description: |
           Whether to run `cabal sdist`.
@@ -101,6 +109,8 @@ jobs:
   CI:
     runs-on: ${{ inputs.os }}
     steps:
+    - name: Run pre-hook
+      run: ${{ inputs.pre-hook }}
     - name: Checkout
       uses: actions/checkout@v4
       with:
