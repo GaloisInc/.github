@@ -245,7 +245,15 @@ jobs:
     - name: Delete old Cabal cache
       env:
         GH_TOKEN: ${{ github.token }}
-      if: steps.cache.outputs.cache-hit
+      # The second conjunct here *should* be superfluous. The docs for
+      # `actions/cache/restore` say:
+      #
+      #   **Note** cache-hit will be set to true only when cache hit occurs for
+      #   the exact key match. For a partial key match via restore-keys or a
+      #   cache miss, it will be set to false.
+      #
+      # However, this appears not to be true in practice, see #31.
+      if: steps.cache.outputs.cache-hit && steps.cache.outputs.cache-primary-key == steps.cache.outputs.cache-matched-key
       run: gh cache delete ${{ steps.cache.outputs.cache-primary-key }}
     - name: Save Cabal cache
       uses: actions/cache/save@v4
