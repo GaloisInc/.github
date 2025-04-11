@@ -85,6 +85,10 @@ of steps that are appropriate for many projects, namely:
 This workflow will not be applicable to all projects, but it is applicable to
 enough to be useful.
 
+For a description of the inputs, see the workflow itself.
+
+#### Comparison to other solutions
+
 This workflow shares some goals with the [haskell-ci] tool. Here are a few
 points of comparison:
 
@@ -109,9 +113,22 @@ points of comparison:
 [Dependabot]: https://docs.github.com/en/code-security/getting-started/dependabot-quickstart-guide
 [^on]: As an example of why such customization is important, it appears that the haskell-ci tool hardcodes `on:` to trigger on pushes and pull requests into the main branch. Not only may this not be appropriate for all projects (consider, for example, projects that use pull requests into a separate `dev` branch), it causes double-builds for pull requests targeting the main branch from a branch in the same repo.
 
-For a description of the inputs, see the workflow itself.
+#### Version support policy
 
-Example:
+This workflow aims to support:
+
+- The latest two major/LTS versions of each macOS, Ubuntu, and Windows image
+  supported by the hosted GitHub Actions runners
+- As many GHC versions as is feasible without elaborate workarounds
+- The latest two versions of Cabal
+
+Support for a wide range of Cabal versions is not a priority because this
+workflow contains an explicit step to check a package's compatibility against
+the version of the Cabal library shipped with GHC. This ensures that the package
+is compatible with older versions of Cabal without having to use them throughout
+the whole workflow.
+
+#### Example
 
 ```yml
 name: CI
