@@ -150,7 +150,7 @@ jobs:
     - name: Create sdist
       run: |
         if [[ "${{ inputs.sdist }}" == true ]]; then
-          cabal sdist -o sdist ${{ inputs.sdist-targets }}
+          cabal sdist -o sdist -- ${{ inputs.sdist-targets }}
           mkdir -p unpacked
           tar -C unpacked -xzf sdist/*.tar.gz
           cd unpacked/*
@@ -189,7 +189,7 @@ jobs:
         cabal user-config update -a "extra-include-dirs: \"\""
         cabal user-config update -a "extra-lib-dirs: \"\""
     - name: Configure
-      run: cabal configure ${{ inputs.configure-flags }} ${{ inputs.build-targets }} ${{ inputs.test-targets }}
+      run: cabal configure ${{ inputs.configure-flags }} -- ${{ inputs.build-targets }} ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
     # Note [Parallelism]
     # ------------------
@@ -207,13 +207,13 @@ jobs:
     # became available with GHC 9.8. To support older versions, we don't use it
     # just yet.
     - name: Build dependencies
-      run: cabal build --only-dependencies ${{ inputs.build-targets }} ${{ inputs.test-targets }}
+      run: cabal build --only-dependencies -- ${{ inputs.build-targets }} ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
     - name: Build
-      run: cabal build ${{ inputs.build-targets }}
+      run: cabal build -- ${{ inputs.build-targets }}
       working-directory: ${{ env.WORK_DIR }}
     - name: Test
-      run: cabal test ${{ inputs.test-targets }}
+      run: cabal test -- ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
     - name: Check Hackage requirements
       run: cabal check
@@ -229,7 +229,7 @@ jobs:
     # library dependencies. Since we are only building Haddocks to ensure well-
     # formedness, we consider this an acceptable tradeoff.
     - name: Haddock
-      run: cabal haddock --disable-documentation ${{ inputs.build-targets }}
+      run: cabal haddock --disable-documentation -- ${{ inputs.build-targets }}
       if: inputs.haddock
       working-directory: ${{ env.WORK_DIR }}
     # Delete the old cache on hit to emulate a cache "update". See
@@ -254,7 +254,7 @@ jobs:
       #
       # However, this appears not to be true in practice, see #31.
       if: steps.cache.outputs.cache-hit && steps.cache.outputs.cache-primary-key == steps.cache.outputs.cache-matched-key
-      run: gh cache delete ${{ steps.cache.outputs.cache-primary-key }}
+      run: gh cache delete -- ${{ steps.cache.outputs.cache-primary-key }}
     - name: Save Cabal cache
       uses: actions/cache/save@v4
       # Always save the cache, even if a previous step fails. (By default, the
