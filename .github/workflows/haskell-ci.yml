@@ -78,8 +78,15 @@ on:
         description: |
           Shell commands to execute before the rest of the workflow.
 
-          Useful for e.g., installing runtime dependencies for test-suites.
           Runs immediately after `actions/checkout`.
+        type: string
+        required: false
+        default: ""
+      pre-test-hook:
+        description: |
+          Shell commands to execute before running `cabal test`.
+
+          Useful for e.g., installing runtime dependencies for test-suites.
         type: string
         required: false
         default: ""
@@ -212,6 +219,9 @@ jobs:
     - name: Build
       run: cabal build -- ${{ inputs.build-targets }}
       working-directory: ${{ env.WORK_DIR }}
+    - name: Run pre-test-hook
+      run: ${{ inputs.pre-test-hook }}
+      working-directory: ${{ env.WORK_DIR }}
     - name: Test
       run: cabal test -- ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
@@ -291,3 +301,4 @@ jobs:
         done
     - name: Run post-hook
       run: ${{ inputs.post-hook }}
+      working-directory: ${{ env.WORK_DIR }}
