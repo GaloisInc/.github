@@ -45,8 +45,9 @@ on:
         description: Flags to pass to `cabal configure`, e.g., `--ghc-options='-Werror=default -j'`
         type: string
         required: false
-        # For an explanation of `--ghc-options='-j'`, see Note [Parallelism].
-        default: --ghc-options='-j' --enable-tests --minimize-conflict-set
+        # For an explanation of `--ghc-options='-j'` and `--semaphore`, see
+        # Note [Parallelism].
+        default: --ghc-options='-j' --semaphore --enable-tests --minimize-conflict-set
       fetch-depth:
         description: Number of commits to fetch. Passed to `actions/checkout`.
         type: number
@@ -241,10 +242,12 @@ jobs:
     #   `configure` step) to build local packages' modules in parallel.
     #
     # This scheme maximizes the use of parallelism while avoiding
-    # oversubscription. See GHC proposal #540 for additional background. It would
-    # be nice to replace this with `cabal configure --semaphore`, but this only
-    # became available with GHC 9.8. To support older versions, we don't use it
-    # just yet.
+    # oversubscription. See GHC proposal #540 for additional background.
+    #
+    # We also pass `--semaphore` to `cabal configure`. This is only supported
+    # on GHC >= 9.8, but Cabal simply ignores it for older compiler versions. If
+    # we ever only support GHC >= 9.8, we could combine the two steps and just
+    # pass `--semaphore`.
     - name: Build dependencies
       # If we had an exact cache hit, the dependencies will be up to date. This
       # step can take a few seconds even when it is a no-op, so skip it in that
