@@ -154,6 +154,13 @@ jobs:
       with:
         cabal-version: ${{ inputs.cabal }}
         ghc-version: ${{ inputs.ghc }}
+    # This makes the location of the build directory (`dist-newstyle`) more
+    # predictable.
+    - name: Create default `cabal.project` file
+      run: |
+        if ! [[ -f cabal.project ]]; then
+          echo 'ignore-project: False' > cabal.project
+        fi
     - name: Create sdist
       run: |
         if [[ "${{ inputs.sdist }}" == true ]]; then
@@ -178,13 +185,8 @@ jobs:
         # as part of the cache key.
         key: ${{ inputs.cache-key-prefix }}-haskell-ci-${{ inputs.os }}-cabal${{ steps.setup-haskell.outputs.cabal-version }}-ghc${{ steps.setup-haskell.outputs.ghc-version }}
       with:
-        # The build directory (`dist-newstyle`) will be in Cabal's "project
-        # root", which is where the `cabal.project` file lives if it is present
-        # (i.e., `github.workspace`), or where the `.cabal` file lives otherwise
-        # (i.e., `env.WORK_DIR`).
         path: |
           ${{ steps.setup-haskell.outputs.cabal-store }}
-          ${{ env.WORK_DIR }}/dist-newstyle
           ${{ github.workspace }}/dist-newstyle
         # Use `github.ref` in the key for branch-specific caching.
         #
@@ -281,7 +283,6 @@ jobs:
       with:
         path: |
           ${{ steps.setup-haskell.outputs.cabal-store }}
-          ${{ env.WORK_DIR }}/dist-newstyle
           ${{ github.workspace }}/dist-newstyle
         key: ${{ steps.cache.outputs.cache-primary-key }}
     # Projects support older Cabal versions so that users can build the project
