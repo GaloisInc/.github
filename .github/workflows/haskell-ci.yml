@@ -198,6 +198,12 @@ jobs:
         key: ${{ inputs.cache-key-prefix }}-haskell-ci-cabal-store-${{ inputs.os }}-cabal${{ steps.setup-haskell.outputs.cabal-version }}-ghc${{ steps.setup-haskell.outputs.ghc-version }}
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store }}
+        # Cabal creates a build plan at `dist-newstyle/cache/plan.json`. This
+        # plan contains the build configurations (e.g., flags, architecture,
+        # etc.) and source hashes of all of the transitive dependencies. This
+        # makes it a perfect hash key for `cabal build --only-dependencies`.
+        # See https://cabal.readthedocs.io/en/3.14/nix-local-build.html.
+        #
         # The `restore-key` allows for restoring the cache from a different
         # plan, which can still speed up the build if most dependencies were
         # unchanged.
@@ -252,7 +258,7 @@ jobs:
       #   cache miss, it will be set to false.
       #
       # However, this appears not to be true in practice, see #31.
-      if: steps.store-cache.outputs.cache-hit != 'true' || steps.store-cache.outputs.cache-primary-key != steps.store-cache.outputs.cache-matched-key
+      if: steps.store-cache.outputs.cache-hit != 'true' || steps.store-cache.outputs.cache-primary-key != steps.store-cache.outputs.cache-matched
       run: cabal build --only-dependencies -- ${{ inputs.build-targets }} ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
     - name: Save Cabal store cache
