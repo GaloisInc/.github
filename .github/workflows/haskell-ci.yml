@@ -168,6 +168,7 @@ jobs:
           wd="$(pwd)"
         fi
         echo "WORK_DIR=${wd}" >> $GITHUB_ENV
+    # TODO(#19): Separate caches for build directory and Cabal store
     - name: Restore Cabal cache
       uses: actions/cache/restore@v4
       id: cache
@@ -177,9 +178,14 @@ jobs:
         # as part of the cache key.
         key: ${{ inputs.cache-key-prefix }}-haskell-ci-${{ inputs.os }}-cabal${{ steps.setup-haskell.outputs.cabal-version }}-ghc${{ steps.setup-haskell.outputs.ghc-version }}
       with:
+        # The build directory (`dist-newstyle`) will be in Cabal's "project
+        # root", which is where the `cabal.project` file lives if it is present
+        # (i.e., `github.workspace`), or where the `.cabal` file lives otherwise
+        # (i.e., `env.WORK_DIR`).
         path: |
           ${{ steps.setup-haskell.outputs.cabal-store }}
           ${{ env.WORK_DIR }}/dist-newstyle
+          ${{ github.workspace }}/dist-newstyle
         # Use `github.ref` in the key for branch-specific caching.
         #
         # The `restore-key` allows for restoring the cache from a different branch
@@ -276,6 +282,7 @@ jobs:
         path: |
           ${{ steps.setup-haskell.outputs.cabal-store }}
           ${{ env.WORK_DIR }}/dist-newstyle
+          ${{ github.workspace }}/dist-newstyle
         key: ${{ steps.cache.outputs.cache-primary-key }}
     # Projects support older Cabal versions so that users can build the project
     # even if they lack access to the latest Cabal package, e.g., when using the
