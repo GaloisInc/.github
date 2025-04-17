@@ -264,7 +264,7 @@ jobs:
       #   cache miss, it will be set to false.
       #
       # However, this appears not to be true in practice, see #31.
-      if: steps.store-cache.outputs.cache-hit != 'true' || steps.store-cache.outputs.cache-primary-key != steps.store-cache.outputs.cache-matched
+      if: steps.store-cache.outputs.cache-hit != 'true' || steps.store-cache.outputs.cache-primary-key != steps.store-cache.outputs.cache-matched-key
       run: cabal build --only-dependencies -- ${{ inputs.build-targets }} ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
     - name: Save Cabal store cache
