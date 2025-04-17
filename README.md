@@ -153,3 +153,30 @@ jobs:
           ghc: ${{ matrix.ghc }}
           os: ${{ matrix.os }}
 ```
+
+## Versioning policy
+
+Each release has a version number of the form `MAJOR.MINOR.PATCH`, with
+a corresponding Git tag prefixed by `v`. These versions follow [semantic
+versioning].
+
+[semantic versioning]: https://semver.org/
+
+Example (for developers):
+```bash
+git tag --annotate vX.Y.Z --message vX.Y.Z
+git push origin vX.Y.Z
+```
+
+We maintain tags of the form `vMAJOR` and may also maintain tags of the form
+`vMAJOR.MINOR`. In accordance with the [official GitHub guidance], we move these
+tags to the latest version tag of which they are a prefix.
+
+[official GitHub guidance]: https://github.com/actions/toolkit/blob/main/docs/action-versioning.md#recommendations
+
+Example (for developers):
+```bash
+git checkout vX.Y.Z
+git tag --force --annotate vX --message vX
+git push origin vX --force
+```
