@@ -86,6 +86,9 @@ on:
         description: |
           Shell commands to execute before running `cabal test`.
 
+          Runs in the unpacked sdist (i.e., not in `$GITHUB_WORKSPACE`) if
+          `inputs.sdist` is `true`.
+
           Useful for e.g., installing runtime dependencies for test-suites.
         type: string
         required: false
