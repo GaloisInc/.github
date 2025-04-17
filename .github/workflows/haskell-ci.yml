@@ -175,28 +175,6 @@ jobs:
         else
           echo "PROJECT_ROOT=${WORK_DIR}" >> $GITHUB_ENV
         fi
-    # TODO(#19): Separate caches for build directory and Cabal store
-    - name: Restore Cabal cache
-      uses: actions/cache/restore@v4
-      id: cache
-      env:
-        # Each `inputs.os` (e.g., `ubuntu-22.04-arm`) uniquely determines a
-        # `runner.arch` (e.g., ARM64), so there is no need to include the latter
-        # as part of the cache key.
-        key: ${{ inputs.cache-key-prefix }}-haskell-ci-${{ inputs.os }}-cabal${{ steps.setup-haskell.outputs.cabal-version }}-ghc${{ steps.setup-haskell.outputs.ghc-version }}
-      with:
-        path: |
-          ${{ steps.setup-haskell.outputs.cabal-store }}
-          ${{ env.PROJECT_ROOT }}/dist-newstyle
-        # Use `github.ref` in the key for branch-specific caching.
-        #
-        # The `restore-key` allows for restoring the cache from a different branch
-        # (e.g., the default branch) if none exists for the current branch (e.g.,
-        # on the first run on a new branch).
-        key: |
-          ${{ env.key }}-${{ github.ref }}
-        restore-keys: |
-          ${{ env.key }}-
     - name: Post-GHC installation fixups on Windows
       if: runner.os == 'Windows'
       run: |
@@ -206,6 +184,43 @@ jobs:
     - name: Configure
       run: cabal configure ${{ inputs.configure-flags }} -- ${{ inputs.build-targets }} ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
+    # Creates `dist-newstyle/cache/plan.json` for the cache key.
+    - name: Create build plan
+      run: cabal build --dry-run -- ${{ inputs.build-targets }}
+      working-directory: ${{ env.WORK_DIR }}
+    - name: Restore Cabal store cache
+      uses: actions/cache/restore@v4
+      id: store-cache
+      env:
+        # Each `inputs.os` (e.g., `ubuntu-22.04-arm`) uniquely determines a
+        # `runner.arch` (e.g., ARM64), so there is no need to include the latter
+        # as part of the cache key.
+        key: ${{ inputs.cache-key-prefix }}-haskell-ci-cabal-store-${{ inputs.os }}-cabal${{ steps.setup-haskell.outputs.cabal-version }}-ghc${{ steps.setup-haskell.outputs.ghc-version }}
+      with:
+        path: ${{ steps.setup-haskell.outputs.cabal-store }}
+        # The `restore-key` allows for restoring the cache from a different
+        # plan, which can still speed up the build if most dependencies were
+        # unchanged.
+        key: |
+          ${{ env.key }}-${{ hashFiles(format('{0}/dist-newstyle/cache/plan.json', env.PROJECT_ROOT)) }}
+        restore-keys: |
+          ${{ env.key }}-
+    - name: Restore Cabal build cache
+      uses: actions/cache/restore@v4
+      id: build-cache
+      env:
+        key: ${{ inputs.cache-key-prefix }}-haskell-ci-cabal-build-${{ inputs.os }}-cabal${{ steps.setup-haskell.outputs.cabal-version }}-ghc${{ steps.setup-haskell.outputs.ghc-version }}
+      with:
+        path: ${{ env.PROJECT_ROOT }}/dist-newstyle
+        # Use `github.ref` in the key for branch-specific caching.
+        #
+        # The `restore-key` allows for restoring the cache from the default
+        # branch (e.g., `main`) if none exists for the current branch (e.g., on
+        # the first run on a new branch).
+        key: |
+          ${{ env.key }}-${{ github.ref }}
+        restore-keys: |
+          ${{ env.key }}-
     # Note [Parallelism]
     # ------------------
     #
@@ -222,8 +237,31 @@ jobs:
     # became available with GHC 9.8. To support older versions, we don't use it
     # just yet.
     - name: Build dependencies
+      # If we had an exact cache hit, the dependencies will be up to date. This
+      # step can take a few seconds even when it is a no-op, so skip it in that
+      # case.
+      #
+      # Note [Cache key check]
+      # ----------------------
+      #
+      # The second disjunct here *should* be superfluous. The docs for
+      # `actions/cache/restore` say:
+      #
+      #   **Note** cache-hit will be set to true only when cache hit occurs for
+      #   the exact key match. For a partial key match via restore-keys or a
+      #   cache miss, it will be set to false.
+      #
+      # However, this appears not to be true in practice, see #31.
+      if: steps.store-cache.outputs.cache-hit != 'true' || steps.store-cache.outputs.cache-primary-key != steps.store-cache.outputs.cache-matched-key
       run: cabal build --only-dependencies -- ${{ inputs.build-targets }} ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
+    - name: Save Cabal store cache
+      # See Note [Cache key check]
+      if: steps.store-cache.outputs.cache-hit != 'true' || steps.store-cache.outputs.cache-primary-key != steps.store-cache.outputs.cache-matched-key
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ steps.setup-haskell.outputs.cabal-store }}
+        key: ${{ steps.store-cache.outputs.cache-primary-key }}
     - name: Build
       run: cabal build -- ${{ inputs.build-targets }}
       working-directory: ${{ env.WORK_DIR }}
@@ -260,31 +298,20 @@ jobs:
     # performant as it stands. See
     # https://github.com/GaloisInc/.github/pull/18#discussion_r2027105101
     # for discussion.
-    - name: Delete old Cabal cache
+    - name: Delete old Cabal build cache
       env:
         GH_TOKEN: ${{ github.token }}
-      # The second conjunct here *should* be superfluous. The docs for
-      # `actions/cache/restore` say:
-      #
-      #   **Note** cache-hit will be set to true only when cache hit occurs for
-      #   the exact key match. For a partial key match via restore-keys or a
-      #   cache miss, it will be set to false.
-      #
-      # However, this appears not to be true in practice, see #31.
-      if: steps.cache.outputs.cache-hit && steps.cache.outputs.cache-primary-key == steps.cache.outputs.cache-matched-key
-      run: gh cache delete -- ${{ steps.cache.outputs.cache-primary-key }}
-    - name: Save Cabal cache
+      # See Note [Cache key check]
+      if: steps.build-cache.outputs.cache-hit && steps.build-cache.outputs.cache-primary-key == steps.build-cache.outputs.cache-matched-key
+      run: gh cache delete -- ${{ steps.build-cache.outputs.cache-primary-key }}
+    - name: Save Cabal build cache
       uses: actions/cache/save@v4
-      # Always save the cache, even if a previous step fails. (By default, the
-      # `cache` action will skip saving the cache in this case, which would
-      # require every subsequent CI job to rebuild the dependencies until there
-      # is a successful job.)
+      # Always save the build cache, even if a previous step fails. (By default,
+      # the `cache` action will skip saving the cache in this case.)
       if: always()
       with:
-        path: |
-          ${{ steps.setup-haskell.outputs.cabal-store }}
-          ${{ env.PROJECT_ROOT }}/dist-newstyle
-        key: ${{ steps.cache.outputs.cache-primary-key }}
+        path: ${{ env.PROJECT_ROOT }}/dist-newstyle
+        key: ${{ steps.build-cache.outputs.cache-primary-key }}
     # Projects support older Cabal versions so that users can build the project
     # even if they lack access to the latest Cabal package, e.g., when using the
     # version provided by their OS package manager on older systems.
