@@ -158,6 +158,21 @@ jobs:
       with:
         cabal-version: ${{ inputs.cabal }}
         ghc-version: ${{ inputs.ghc }}
+    # When present, `cabal.project.freeze` is generally meant to constrain
+    # *every* dependency. However, it is possible to add a dependency and forget
+    # to regenerate the freeze file. We prevent this mistake by comparing the
+    # existing freeze file against a fresh run of `cabal freeze`. Because this
+    # run will be constrained by the current freeze file, it will only result
+    # in adding constraints for currently-unconstrained dependencies, never
+    # changing constraints on already-pinned dependencies.
+    - name: Check that `cabal.project.freeze` constrains every dependency
+      run: |
+        if [[ -f cabal.project.freeze ]]; then
+          old=$(md5sum cabal.project.freeze)
+          cabal freeze
+          new=$(md5sum cabal.project.freeze)
+          [[ "${new}" == "${old}" ]]
+        fi
     - name: Create sdist
       run: |
         if [[ "${{ inputs.sdist }}" == true ]]; then
