@@ -31,6 +31,30 @@ on:
         type: boolean
         required: false
         default: true
+      check-freeze:
+        description: |
+          Whether to check that `cabal.project.freeze` constrains every
+          dependency.
+
+          When present, `cabal.project.freeze` is generally meant to
+          constrain every dependency. However, it is possible to add a
+          dependency and forget to regenerate the freeze file. We prevent
+          this mistake by comparing the existing freeze file against a fresh
+          run of `cabal freeze`. Because this run will be constrained by the
+          current freeze file, it will only result in adding constraints for
+          currently-unconstrained dependencies, never changing constraints on
+          already-pinned dependencies.
+
+          This step is not appropriate for projects that do not expect
+          `cabal.project.freeze` to constrain every dependency. Such a situation
+          can arise on projects that support multiple OSes. Such projects may
+          elect to use a single freeze file across OSes and leave OS-specific
+          dependencies unpinned so that developers without access to each
+          supported OS may still update constraints on all the OS-agnostic
+          dependencies.
+        type: boolean
+        required: false
+        default: true
       compat:
         description: Whether to run the Cabal/GHC compatibility check.
         type: boolean
@@ -158,14 +182,8 @@ jobs:
       with:
         cabal-version: ${{ inputs.cabal }}
         ghc-version: ${{ inputs.ghc }}
-    # When present, `cabal.project.freeze` is generally meant to constrain
-    # *every* dependency. However, it is possible to add a dependency and forget
-    # to regenerate the freeze file. We prevent this mistake by comparing the
-    # existing freeze file against a fresh run of `cabal freeze`. Because this
-    # run will be constrained by the current freeze file, it will only result
-    # in adding constraints for currently-unconstrained dependencies, never
-    # changing constraints on already-pinned dependencies.
     - name: Check that `cabal.project.freeze` constrains every dependency
+      if: inputs.check-freeze
       run: |
         if [[ -f cabal.project.freeze ]]; then
           old=$(md5sum cabal.project.freeze)
