@@ -314,6 +314,7 @@ jobs:
       run: ${{ inputs.pre-test-hook }}
       working-directory: ${{ env.WORK_DIR }}
     - name: Test
+      if: inputs.test
       run: cabal test -- ${{ inputs.test-targets }}
       working-directory: ${{ env.WORK_DIR }}
     - name: Check Hackage requirements
