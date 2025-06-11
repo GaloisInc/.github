@@ -348,7 +348,9 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       # See Note [Cache key check]
-      if: steps.build-cache.outputs.cache-hit && steps.build-cache.outputs.cache-primary-key == steps.build-cache.outputs.cache-matched-key
+      if: steps.build-cache.outputs.cache-hit &&
+          steps.build-cache.outputs.cache-primary-key == steps.build-cache.outputs.cache-matched-key &&
+          github.event.pull_request.head.repo.fork == false
       run: gh cache delete -- ${{ steps.build-cache.outputs.cache-primary-key }}
     - name: Save Cabal build cache
       uses: actions/cache/save@v4
