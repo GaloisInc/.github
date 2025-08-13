@@ -186,10 +186,9 @@ jobs:
       if: inputs.check-freeze
       run: |
         if [[ -f cabal.project.freeze ]]; then
-          old=$(md5sum cabal.project.freeze)
+          old=$(<cabal.project.freeze)
           cabal freeze
-          new=$(md5sum cabal.project.freeze)
-          [[ "${new}" == "${old}" ]]
+          echo "${old}" | diff -u - cabal.project.freeze
         fi
     - name: Create sdist
       run: |
