@@ -350,6 +350,11 @@ jobs:
       if: steps.build-cache.outputs.cache-hit &&
           steps.build-cache.outputs.cache-primary-key == steps.build-cache.outputs.cache-matched-key &&
           github.event.pull_request.head.repo.fork == false
+      # This step can fail even when the cache key check succeeds. This might
+      # be because of TOCTOU (time-of-check vs. time-of-use, i.e., the cache has
+      # been deleted between the check and this step). In any case, deletion is
+      # not critical to the success of this workflow.
+      continue-on-error: true
       run: gh cache delete -- ${{ steps.build-cache.outputs.cache-primary-key }}
     - name: Save Cabal build cache
       uses: actions/cache/save@v4
