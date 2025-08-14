@@ -120,7 +120,13 @@ This workflow aims to support:
 - The latest two major/LTS versions of each macOS, Ubuntu, and Windows image
   supported by the hosted GitHub Actions runners
 - As many GHC versions as is feasible without elaborate workarounds
+  (in particular, we are limited to the GHC versions [supported by
+  `haskell-actions/setup`][setup], which is itself limited to those [supported
+  by `ghcup`][ghcup])
 - The latest two versions of Cabal
+
+[setup]: https://github.com/haskell-actions/setup?tab=readme-ov-file#version-support
+[ghcup]: https://www.haskell.org/ghcup/install/#supported-tools
 
 Support for a wide range of Cabal versions is not a priority because this
 workflow contains an explicit step to check a package's compatibility against
