@@ -360,7 +360,7 @@ jobs:
         # There can be multiple .tix files if the test suite runs an
         # instrumented executable multiple times (e.g., for end-to-end tests).
         # Combine all of the .tix files in the repo.
-        tixes=$(find . -name '*.tix' -print)
+        tixes=$(find . "${PROJECT_ROOT}/dist-newstyle" -name '*.tix' -print)
         if [[ -z "${tixes}" ]]; then
           exit 0
         fi
@@ -370,7 +370,7 @@ jobs:
         # Find all `--hpcdir`s. Passing extras doesn't seem to matter, so just
         # grab all of them.
         hpc_args=""
-        for d in $(find dist-newstyle/ -path '*/hpc/vanilla/mix' -type d -print); do
+        for d in $(find "${PROJECT_ROOT}/dist-newstyle" -path '*/hpc/vanilla/mix' -type d -print); do
           hpc_args="${hpc_args} --hpcdir=${d}"
         done
 
