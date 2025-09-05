@@ -72,6 +72,11 @@ on:
         # For an explanation of `--ghc-options='-j'` and `--semaphore`, see
         # Note [Parallelism].
         default: --ghc-options='-j' --semaphore --enable-tests --minimize-conflict-set
+      coverage:
+        description: Whether to run `hpc report` to report test-suite coverage.
+        type: boolean
+        required: false
+        default: true
       fetch-depth:
         description: Number of commits to fetch. Passed to `actions/checkout`.
         type: number
@@ -87,6 +92,11 @@ on:
         type: boolean
         required: false
         default: true
+      hpc-flags:
+        description: Flags to pass to `hpc report`
+        type: string
+        required: false
+        default: ""
       os:
         description: |
           Runner OS, e.g., "ubuntu-latest".
@@ -333,6 +343,47 @@ jobs:
       run: cabal haddock --disable-documentation -- ${{ inputs.build-targets }}
       if: inputs.haddock
       working-directory: ${{ env.WORK_DIR }}
+    - name: Report test coverage
+      if: inputs.coverage
+      working-directory: ${{ env.WORK_DIR }}
+      # This step isn't essential, and it turns out that getting a coverage
+      # report is pretty non-trivial. Doing so properly involves a lot of
+      # shenanigans with paths inside dist-newstyle/, see e.g., saw-script's
+      # `compute-coverage.sh`. This step is currently best-effort, and may fail
+      # in corner cases (e.g., when versions are bumped, see saw-script#2114).
+      # Rather than anticipate and handle all the edge cases, we simply allow
+      # this to fail.
+      continue-on-error: true
+      env:
+        HPC_FLAGS: ${{ inputs.hpc-flags }}
+      run: |
+        # There can be multiple .tix files if the test suite runs an
+        # instrumented executable multiple times (e.g., for end-to-end tests).
+        # Combine all of the .tix files in the repo.
+        tixes=$(find . -name '*.tix' -print)
+        if [[ -z "${tixes}" ]]; then
+          exit 0
+        fi
+        tix="all.tix"
+        hpc sum --union --output=${tix} ${tixes}
+
+        # Find all `--hpcdir`s. Passing extras doesn't seem to matter, so just
+        # grab all of them.
+        hpc_args=""
+        for d in $(find dist-newstyle/ -path '*/hpc/vanilla/mix' -type d -print); do
+          hpc_args="${hpc_args} --hpcdir=${d}"
+        done
+
+        if [[ -z "${hpc_args}" ]]; then
+          echo 'Could not find `--hpcdir`s' 1>&2
+          exit 1
+        fi
+
+        hpc report ${tix} ${hpc_args} ${HPC_FLAGS}
+    # Debloat dist-newstyle before caching it
+    - name: Remove tix files from Cabal build directory
+      working-directory: ${{ env.WORK_DIR }}
+      run: find "${PROJECT_ROOT}/dist-newstyle" -type f -name '*.tix' -delete
     # Delete the old cache on hit to emulate a cache "update". See
     # https://github.com/actions/cache/issues/109 and
     # https://github.com/actions/cache/issues/342.
