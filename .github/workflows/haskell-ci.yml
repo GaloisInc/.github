@@ -408,11 +408,10 @@ jobs:
     - name: Create coverage report artifact
       id: coverage-artifact
       if: inputs.coverage-artifact
-      working-directory: ${{ env.WORK_DIR }}
       uses: actions/upload-artifact@v4
       with:
         name: coverage-report-${{ inputs.cache-key-prefix }}-${{ inputs.os }}-cabal${{ steps.setup-haskell.outputs.cabal-version }}-ghc${{ steps.setup-haskell.outputs.ghc-version }}
-        path: coverage-report/
+        path: ${{ env.WORK_DIR }}/coverage-report/
     # Debloat dist-newstyle before caching it
     - name: Remove tix files from Cabal build directory
       working-directory: ${{ env.WORK_DIR }}
