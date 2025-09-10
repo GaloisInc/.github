@@ -77,6 +77,11 @@ on:
         type: boolean
         required: false
         default: true
+      coverage-artifact:
+        description: Whether to produce an artifact containing an HTML coverage report
+        type: boolean
+        required: false
+        default: true
       fetch-depth:
         description: Number of commits to fetch. Passed to `actions/checkout`.
         type: number
@@ -392,6 +397,15 @@ jobs:
         hpc report ${tix} ${hpc_args} ${HPC_FLAGS} --per-module --decl-list | tee -a "${GITHUB_STEP_SUMMARY}"
         printf '```\n\n' >> "${GITHUB_STEP_SUMMARY}"
         printf '</details>\n' >> "${GITHUB_STEP_SUMMARY}"
+
+        hpc markup ${tix} ${hpc_args} ${HPC_FLAGS} --destdir=coverage-report
+    - name: Create coverage report artifact
+      if: inputs.coverage-artifact
+      working-directory: ${{ env.WORK_DIR }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report-${{ inputs.cache-key-prefix }}-${{ inputs.os }}-cabal${{ steps.setup-haskell.outputs.cabal-version }}-ghc${{ steps.setup-haskell.outputs.ghc-version }}
+        path: coverage-report/
     # Debloat dist-newstyle before caching it
     - name: Remove tix files from Cabal build directory
       working-directory: ${{ env.WORK_DIR }}
