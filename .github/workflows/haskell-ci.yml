@@ -379,7 +379,19 @@ jobs:
           exit 1
         fi
 
-        hpc report ${tix} ${hpc_args} ${HPC_FLAGS}
+        # This part will produce a Github-flavored Markdown report on the
+        # "job summary" page. The report will first contain the output of
+        # `hpc report` in a code block, followed by a collapsible "spoiler"
+        # containing the more detailed per-module information.
+        printf '## HPC coverage results\n' >> "${GITHUB_STEP_SUMMARY}"
+        printf '```\n' >> "${GITHUB_STEP_SUMMARY}"
+        hpc report ${tix} ${hpc_args} ${HPC_FLAGS} | tee -a "${GITHUB_STEP_SUMMARY}"
+        printf '```\n' >> "${GITHUB_STEP_SUMMARY}"
+        printf '<details><summary>Module-level summary</summary>\n\n' >> "${GITHUB_STEP_SUMMARY}"
+        printf '```\n' >> "${GITHUB_STEP_SUMMARY}"
+        hpc report ${tix} ${hpc_args} ${HPC_FLAGS} --per-module --decl-list | tee -a "${GITHUB_STEP_SUMMARY}"
+        printf '```\n\n' >> "${GITHUB_STEP_SUMMARY}"
+        printf '</details>\n' >> "${GITHUB_STEP_SUMMARY}"
     # Debloat dist-newstyle before caching it
     - name: Remove tix files from Cabal build directory
       working-directory: ${{ env.WORK_DIR }}
