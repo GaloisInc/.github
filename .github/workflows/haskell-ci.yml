@@ -73,7 +73,11 @@ on:
         # Note [Parallelism].
         default: --ghc-options='-j' --semaphore --enable-tests --minimize-conflict-set
       coverage:
-        description: Whether to run `hpc report` to report test-suite coverage.
+        description: |
+          Whether to run `hpc report` to report test-suite coverage.
+
+          Note that the client must enable some form of coverage tracking, e.g.,
+          by adding `--enable-coverage` to the `configure-flags` input.
         type: boolean
         required: false
         default: true
