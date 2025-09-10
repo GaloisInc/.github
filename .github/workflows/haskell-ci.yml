@@ -167,6 +167,10 @@ on:
         type: string
         required: false
         default: all
+    outputs:
+      coverage-artifact-id:
+        description: The ID of the coverage report artifact.
+        value: ${{ jobs.CI.outputs.coverage-artifact-id }}
 
 # General commentary
 # ------------------
@@ -181,6 +185,8 @@ on:
 jobs:
   CI:
     runs-on: ${{ inputs.os }}
+    outputs:
+      coverage-artifact-id: ${{ steps.coverage-artifact.outputs.artifact-id }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -400,6 +406,7 @@ jobs:
 
         hpc markup ${tix} ${hpc_args} ${HPC_FLAGS} --destdir=coverage-report
     - name: Create coverage report artifact
+      id: coverage-artifact
       if: inputs.coverage-artifact
       working-directory: ${{ env.WORK_DIR }}
       uses: actions/upload-artifact@v4
